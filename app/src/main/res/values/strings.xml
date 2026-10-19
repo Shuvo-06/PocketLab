@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PocketLab</string>
+
+    <string name="nav_dashboard">Sensors</string>
+    <string name="nav_recorder">Recorder</string>
+    <string name="nav_experiments">Experiments</string>
+    <string name="nav_history">History</string>
+
+    <string name="action_about">About</string>
+    <string name="about_message">A smartphone-based scientific utility for guided physics experiments.\n\nVersion %1$s\n\nResults are estimates, not laboratory-grade measurements.</string>
+
+    <!-- Dashboard (Phase 2) -->
+    <string name="dashboard_summary">%1$d of %2$d sensors available on this device</string>
+    <string name="sampling_rate_label">Sampling rate</string>
+    <string name="sampling_rate_hint">This is a request; Android may deliver faster or slower. The measured rate is shown on each card.</string>
+    <string name="sensor_unavailable">Not available on this device</string>
+    <string name="sensor_waiting">Waiting for data…</string>
+    <string name="sensor_stats">%1$.1f Hz measured · Accuracy: %2$s</string>
+    <string name="sensor_details">%1$s (%2$s)\nRange ±%3$s %4$s · Resolution %5$s · Min delay %6$s</string>
+    <string name="min_delay_on_change">on change</string>
+    <string name="min_delay_na">n/a</string>
+    <string name="accuracy_high">High</string>
+    <string name="accuracy_medium">Medium</string>
+    <string name="accuracy_low">Low</string>
+    <string name="accuracy_unreliable">Unreliable</string>
+
+    <!-- Recorder + graph (Phase 3) -->
+    <string name="recorder_sensor">Sensor</string>
+    <string name="recorder_rate">Sampling rate</string>
+    <string name="recorder_start">Start</string>
+    <string name="recorder_pause">Pause</string>
+    <string name="recorder_resume">Resume</string>
+    <string name="recorder_stop">Stop</string>
+    <string name="recorder_marker">Marker</string>
+    <string name="recorder_no_sensors">No supported sensors were found on this device, so there is nothing to record.</string>
+    <string name="recorder_start_failed">Could not start the sensor. Please try again.</string>
+    <string name="recorder_note">Pinch to zoom the graph, drag to look back, double-tap for live view. Recording pauses when the app is in the background (background recording arrives in Phase 8).</string>
+    <string name="recorder_stats">Samples: %1$d · %2$.1f Hz measured</string>
+    <string name="recorder_stats_truncated">Samples: %1$d · %2$.1f Hz measured · graph keeps the newest %3$d</string>
+    <string name="state_ready">Ready</string>
+    <string name="state_recording">Recording</string>
+    <string name="state_paused">Paused</string>
+    <string name="state_stopped">Stopped</string>
+    <string name="graph_empty">No data yet. Press Start.</string>
+    <string name="graph_live_hint">double-tap: live</string>
+    <string name="graph_description">Live sensor graph</string>
+
+    <!-- Placeholders -->
+    <string name="experiments_title">Guided Experiments</string>
+    <string name="experiments_body">Pendulum, magnetic field, light intensity, and relative height, with step-by-step instructions and automatic analysis.</string>
+    <string name="experiments_phase">Planned: Phase 5</string>
+    <string name="history_title">Experiment History</string>
+    <string name="history_body">Saved sessions will appear here, ready to view, rename, export, or delete.</string>
+    <string name="history_phase">Planned: Phase 6</string>
+</resources>

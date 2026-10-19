@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.pocketlab.app.ui.dashboard.DashboardFragment"
+        android:label="@string/nav_dashboard"
+        tools:layout="@layout/fragment_dashboard" />
+
+    <fragment
+        android:id="@+id/recorderFragment"
+        android:name="com.pocketlab.app.ui.recorder.RecorderFragment"
+        android:label="@string/nav_recorder"
+        tools:layout="@layout/fragment_recorder" />
+
+    <fragment
+        android:id="@+id/experimentsFragment"
+        android:name="com.pocketlab.app.ui.experiments.ExperimentsFragment"
+        android:label="@string/nav_experiments"
+        tools:layout="@layout/fragment_placeholder" />
+
+    <fragment
+        android:id="@+id/historyFragment"
+        android:name="com.pocketlab.app.ui.history.HistoryFragment"
+        android:label="@string/nav_history"
+        tools:layout="@layout/fragment_placeholder" />
+</navigation>

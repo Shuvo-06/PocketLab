@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PocketLab" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#4DDADA</item>
+        <item name="colorOnPrimary">#003737</item>
+        <item name="colorPrimaryContainer">#004F4F</item>
+        <item name="colorOnPrimaryContainer">#6FF7F6</item>
+        <item name="colorSecondary">#B0CCCB</item>
+        <item name="colorOnSecondary">#1B3534</item>
+        <item name="colorSecondaryContainer">#324B4B</item>
+        <item name="colorOnSecondaryContainer">#CCE8E7</item>
+        <item name="android:colorBackground">#0E1514</item>
+        <item name="colorSurface">#0E1514</item>
+        <item name="colorOnSurface">#DDE4E3</item>
+        <item name="colorSurfaceVariant">#3F4948</item>
+        <item name="colorOnSurfaceVariant">#BEC9C8</item>
+        <item name="colorOutline">#889392</item>
+    </style>
+</resources>
