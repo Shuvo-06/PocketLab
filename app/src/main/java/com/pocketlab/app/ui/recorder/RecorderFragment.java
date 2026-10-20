@@ -16,10 +16,13 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.snackbar.Snackbar;
 import com.pocketlab.app.R;
+import com.pocketlab.app.analysis.PeriodResult;
+import com.pocketlab.app.analysis.SummaryStats;
 import com.pocketlab.app.databinding.FragmentRecorderBinding;
 import com.pocketlab.app.graph.TimeFormat;
 import com.pocketlab.app.recording.RecordingSession;
 import com.pocketlab.app.recording.RecordingState;
+import com.pocketlab.app.recording.RecordingSummary;
 import com.pocketlab.app.sensor.SamplingRate;
 import com.pocketlab.app.sensor.SensorType;
 import com.pocketlab.app.sensor.ValueFormatter;
@@ -38,6 +41,7 @@ public class RecorderFragment extends Fragment {
     private RecorderViewModel vm;
     private List<SensorType> available;
     @Nullable private RecordingSession boundSession;
+    @Nullable private RecordingSession summarisedSession;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable ticker = new Runnable() {
@@ -146,6 +150,7 @@ public class RecorderFragment extends Fragment {
         binding.status.setText(statusLabel(st));
 
         if (s == null) {
+            binding.analysis.setVisibility(View.GONE);
             binding.elapsed.setText(TimeFormat.format(0));
             binding.values.setText("");
             binding.stats.setText("");
@@ -181,6 +186,46 @@ public class RecorderFragment extends Fragment {
                 : getString(R.string.recorder_stats, s.getTotalSamples(), s.getMeasuredHz()));
 
         if (st == RecordingState.RECORDING) binding.graph.invalidate();
+
+        // Summary appears once, when the recording is stopped.
+        if (st == RecordingState.STOPPED && s.hasSamples()) {
+            if (summarisedSession != s) {
+                summarisedSession = s;
+                binding.analysis.setText(formatSummary(s, RecordingSummary.of(s)));
+            }
+            binding.analysis.setVisibility(View.VISIBLE);
+        } else {
+            binding.analysis.setVisibility(View.GONE);
+        }
+    }
+
+    private String formatSummary(RecordingSession s, RecordingSummary sum) {
+        SensorType type = s.getType();
+        String fmt = "%." + type.getDecimals() + "f";
+        StringBuilder sb = new StringBuilder(getString(R.string.analysis_header));
+        for (RecordingSummary.Axis a : sum.getAxes()) {
+            SummaryStats st = a.getStats();
+            String sd = Double.isNaN(st.getStdDev()) ? "–" : String.format(Locale.US, fmt, st.getStdDev());
+            sb.append('\n').append(getString(R.string.analysis_axis_line,
+                    axisName(type, a.getIndex()),
+                    String.format(Locale.US, fmt, st.getMean()), sd,
+                    String.format(Locale.US, fmt, st.getMin()),
+                    String.format(Locale.US, fmt, st.getMax()), type.getUnit()));
+        }
+        PeriodResult p = sum.getPeriod();
+        if (p != null) {
+            sb.append('\n').append(getString(R.string.analysis_period,
+                    axisName(type, sum.getPeriodAxis()), p.getPeriodSeconds(),
+                    p.getStdDevSeconds(), p.getPeriodCount(), p.getFrequencyHz()));
+        }
+        if (sum.isTruncated()) {
+            sb.append('\n').append(getString(R.string.analysis_note, sum.getSamplesUsed()));
+        }
+        return sb.toString();
+    }
+
+    private static String axisName(SensorType type, int index) {
+        return type.getAxes() > 1 ? type.getAxisLabel(index) : type.getDisplayName();
     }
 
     private int statusLabel(RecordingState st) {
@@ -196,6 +241,7 @@ public class RecorderFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         boundSession = null;
+        summarisedSession = null;
         binding = null;
     }
 }

@@ -1,4 +1,4 @@
-# PocketLab Architecture (Phases 1-3)
+# PocketLab Architecture (Phases 1-4)
 
 Single-activity app: `MainActivity` hosts a `NavHostFragment`; screens are Fragments
 behind a bottom navigation bar. All UI uses XML layouts + ViewBinding.
@@ -11,7 +11,7 @@ behind a bottom navigation bar. All UI uses XML layouts + ViewBinding.
 | `sensor` | `SensorHub` (SensorManager wrapper), `SensorType`, `SensorSample`, `SamplingRate`, `RateEstimator`, `ValueFormatter` | only SensorHub/SensorInfo/SensorType constants |
 | `graph` | `SeriesBuffer`, `Marker`, `NiceScale`, `TimeFormat` | no (pure Java) |
 | `recording` | `RecordingSession`, `RecordingState` | no (pure Java) |
-| `analysis` | Phase 4 maths | no (pure Java, enforced by convention) |
+| `analysis` | Scientific maths (Phase 4) | no. Imports nothing from the app or Android |
 | `data` | Phase 6+ persistence/cloud | yes |
 
 Dependency rule: `ui -> recording/graph/sensor`; `recording -> graph, sensor`; `analysis -> nothing`.
@@ -41,3 +41,28 @@ ticker refreshes the UI so UI cost does not scale with sensor rate.
 - Java 11 / AGP 7.3-alpha / API 32 for Studio Dolphin Canary 8 (see README).
 - `allowBackup=false` until Phase 9.
 - Sensors declared `required="false"` so the app installs on any phone.
+
+## Analysis engine (Phase 4)
+Package `analysis` is pure Java and depends on nothing else in the app. Time is in seconds.
+
+| Class | Purpose |
+|---|---|
+| `Series` | Immutable (time, value) data with validation, `slice`, `demeaned`, `averageRateHz` |
+| `Stats`, `SummaryStats` | mean, sample/population std-dev, min, max, median, RMS |
+| `LowPassFilter` | First-order filter using real time steps; `filterZeroPhase` removes lag |
+| `PeakDetector` | Local maxima filtered by prominence and minimum separation |
+| `PeriodEstimator` | Period from peaks, or from mean-level rising crossings with interpolation and a hysteresis noise band |
+| `LinearRegression` | Least squares: slope, intercept, R², slope standard error |
+| `ErrorMetrics` | Absolute and percentage error (NaN when the reference is 0) |
+| `PhysicsFormulas` | Pendulum g and period, barometric altitude and height change |
+
+Design notes:
+- Zero-crossing period estimation beats peak spacing for a pendulum: it ignores gravity offset and is
+  finer than the sample spacing (peaks are quantised to one sample).
+- Hysteresis (the recorder uses 25 % of the signal spread) stops sensor noise from creating false cycles.
+- Undefined results are explicit: `NaN` (std-dev of one value, % error vs 0) or `null` (too few cycles).
+  Callers must check; the UI shows "–" or omits the line.
+- `recording.RecordingSummary` is the only bridge: it converts graph buffers to `Series` and runs the
+  engine. The recorder shows it after Stop. It uses the samples still in the buffer; Phase 6 will use all.
+- Phase 5 experiments will combine these pieces, for example pendulum = detrend, zero-phase filter,
+  period, then `gravityFromPendulum`, then `percentageError` against 9.80665.

@@ -6,7 +6,7 @@
 | F1 | Availability, units, live values for 5 sensors | 2 | done |
 | F2 | Free recording: pause/resume/stop, markers | 3 | done |
 | F3 | Real-time multi-series graph, bounded buffer | 3 | done |
-| F4 | Analysis: mean, std-dev, low-pass, peaks, period, regression, % error | 4 | |
+| F4 | Analysis: mean, std-dev, low-pass, peaks, period, regression, % error | 4 | done |
 | F5 | Four guided experiments from JSON config | 5 | |
 | F6 | Save/rename/delete sessions (Room) | 6 | |
 | F7 | Export CSV/JSON/PDF, share via FileProvider | 7 | |

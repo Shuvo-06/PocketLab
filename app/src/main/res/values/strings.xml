@@ -46,6 +46,12 @@
     <string name="graph_live_hint">double-tap: live</string>
     <string name="graph_description">Live sensor graph</string>
 
+    <!-- Recording summary (Phase 4) -->
+    <string name="analysis_header">Summary</string>
+    <string name="analysis_axis_line">%1$s: mean %2$s · σ %3$s · min %4$s · max %5$s %6$s</string>
+    <string name="analysis_period">Estimated period (%1$s): %2$.3f s ± %3$.3f s over %4$d cycles (≈ %5$.2f Hz)</string>
+    <string name="analysis_note">Based on the newest %1$d samples kept for the graph.</string>
+
     <!-- Placeholders -->
     <string name="experiments_title">Guided Experiments</string>
     <string name="experiments_body">Pendulum, magnetic field, light intensity, and relative height, with step-by-step instructions and automatic analysis.</string>

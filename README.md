@@ -27,6 +27,7 @@ fall back to AGP `7.1.3` (root `build.gradle`) with Gradle `7.2` (`gradle-wrappe
 - [x] Phase 1: skeleton, navigation, theme, architecture docs
 - [x] Phase 2: SensorHub, live dashboard, sampling rates, measured Hz
 - [x] Phase 3: Canvas graph, free recorder (pause/resume/stop, markers, bounded buffer)
-- [ ] Phase 4: scientific analysis engine
+- [x] Phase 4: scientific analysis library (stats, filter, peaks, period, regression, % error) + recording summary
+- [ ] Phase 5: guided experiment framework
 
 See `docs/`.
