@@ -24,6 +24,12 @@
         tools:layout="@layout/fragment_placeholder" />
 
     <fragment
+        android:id="@+id/experimentWizardFragment"
+        android:name="com.pocketlab.app.ui.experiments.ExperimentWizardFragment"
+        android:label="@string/nav_experiments"
+        tools:layout="@layout/fragment_experiment_wizard" />
+
+    <fragment
         android:id="@+id/historyFragment"
         android:name="com.pocketlab.app.ui.history.HistoryFragment"
         android:label="@string/nav_history"

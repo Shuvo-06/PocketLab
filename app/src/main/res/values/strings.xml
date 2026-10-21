@@ -59,4 +59,25 @@
     <string name="history_title">Experiment History</string>
     <string name="history_body">Saved sessions will appear here, ready to view, rename, export, or delete.</string>
     <string name="history_phase">Planned: Phase 6</string>
+
+    <string name="experiments_error">Could not load the experiment list: %1$s</string>
+    <string name="experiment_sensor_ok">Needs: %1$s · available</string>
+    <string name="experiment_sensor_missing">Needs: %1$s · not available on this device</string>
+    <string name="wizard_step">Step %1$d of %2$d</string>
+    <string name="wizard_needs_sensor">Sensor needed: %1$s</string>
+    <string name="wizard_sensor_missing">This device does not have the required sensor, so this experiment cannot run here.</string>
+    <string name="wizard_not_found">This experiment could not be found.</string>
+    <string name="wizard_inputs_title">Enter your measurements</string>
+    <string name="wizard_inputs_body">These values are used to calculate the result.</string>
+    <string name="wizard_record_title">Record</string>
+    <string name="wizard_results_title">Results</string>
+    <string name="wizard_back">Back</string>
+    <string name="wizard_next">Next</string>
+    <string name="wizard_run_again">Run again</string>
+    <string name="wizard_done">Done</string>
+    <string name="wizard_start">Start recording</string>
+    <string name="wizard_stop">Stop and analyse</string>
+    <string name="wizard_not_recording">Not recording</string>
+    <string name="wizard_recording">Recording… stops automatically after %1$.0f s</string>
+    <string name="wizard_interrupted">The recording was cancelled because the app went to the background. Please run it again.</string>
 </resources>

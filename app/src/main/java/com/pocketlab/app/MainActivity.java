@@ -16,6 +16,7 @@ import androidx.navigation.ui.NavigationUI;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pocketlab.app.databinding.ActivityMainBinding;
 import com.pocketlab.app.ui.recorder.RecorderViewModel;
+import com.pocketlab.app.ui.experiments.ExperimentViewModel;
 import com.pocketlab.app.util.BuildConfigVersion;
 
 import java.util.HashSet;
@@ -58,7 +59,9 @@ public class MainActivity extends AppCompatActivity {
         // Until the Phase 8 foreground service exists, a recording must not keep running
         // unseen in the background. Rotation is not "leaving the app", so skip it.
         if (!isChangingConfigurations()) {
-            new ViewModelProvider(this).get(RecorderViewModel.class).onAppBackgrounded();
+            ViewModelProvider provider = new ViewModelProvider(this);
+            provider.get(RecorderViewModel.class).onAppBackgrounded();
+            provider.get(ExperimentViewModel.class).onAppBackgrounded();
         }
     }
 
