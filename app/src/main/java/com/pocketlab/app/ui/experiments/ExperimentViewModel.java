@@ -9,19 +9,26 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 
 import com.pocketlab.app.PocketLabApp;
+import com.pocketlab.app.data.SessionHeader;
+import com.pocketlab.app.data.SessionKind;
+import com.pocketlab.app.data.SessionRecorder;
+import com.pocketlab.app.data.SessionText;
 import com.pocketlab.app.experiment.ExperimentAnalyzer;
 import com.pocketlab.app.experiment.ExperimentDefinition;
 import com.pocketlab.app.experiment.ExperimentResult;
 import com.pocketlab.app.recording.RecordingSession;
 import com.pocketlab.app.recording.RecordingState;
 import com.pocketlab.app.sensor.SensorHub;
+import com.pocketlab.app.work.SyncScheduler;
 import com.pocketlab.app.sensor.SensorSample;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * State of the experiment wizard. Activity-scoped so a run survives rotation and tab switches.
@@ -52,6 +59,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
     @Nullable private RecordingSession session;
     @Nullable private SensorHub.Subscription subscription;
     @Nullable private ExperimentResult result;
+    @Nullable private SessionRecorder recorder;
     private boolean interrupted;
     private boolean stopPosted;
 
@@ -79,8 +87,16 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
         pages = p;
     }
 
+    private void discardRecorder() {
+        if (recorder != null) {
+            recorder.discard();
+            recorder = null;
+        }
+    }
+
     private void reset() {
         cancelSubscription();
+        discardRecorder();
         session = null;
         result = null;
         inputTexts.clear();
@@ -143,9 +159,18 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
         RecordingSession s = new RecordingSession(def.getSensor(), def.getRate(), capacity);
         SensorHub.Subscription sub = hub.subscribe(def.getSensor(), def.getRate(), this);
         if (sub == null) return false;
+        long now = System.currentTimeMillis();
+        SessionRecorder rec = ((PocketLabApp) getApplication()).getSessionRepository().newRecorder(
+                new SessionHeader(SessionText.defaultName(def.getTitle(), now,
+                        Locale.getDefault(), TimeZone.getDefault()),
+                        now, def.getSensor(), def.getRate(), SessionKind.EXPERIMENT,
+                        def.getId(), def.getTitle()));
+        rec.begin();
+        s.setSampleSink(rec);
         s.start();
         session = s;
         subscription = sub;
+        recorder = rec;
         result = null;
         stopPosted = false;
         return true;
@@ -157,6 +182,16 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
         session.stop();
         cancelSubscription();
         result = ExperimentAnalyzer.analyze(def, inputs, ExperimentAnalyzer.seriesFrom(session));
+        if (recorder != null) {
+            // Only successful runs are kept; a failed attempt would just clutter the history.
+            if (result.isOk()) {
+                recorder.finish(session, result.toPlainText());
+                SyncScheduler.onSessionSaved(getApplication());
+            } else {
+                recorder.discard();
+            }
+            recorder = null;
+        }
         pageIndex = pages.size() - 1;
     }
 
@@ -174,6 +209,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
     public void onAppBackgrounded() {
         if (isRecording()) {
             cancelSubscription();
+            discardRecorder();
             session = null;
             interrupted = true;
         }
@@ -205,5 +241,6 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
     @Override
     protected void onCleared() {
         cancelSubscription();
+        discardRecorder();
     }
 }

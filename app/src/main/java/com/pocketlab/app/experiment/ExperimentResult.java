@@ -35,6 +35,14 @@ public final class ExperimentResult {
         return new ExperimentResult(true, interpretation, lines);
     }
 
+    /** Labelled values followed by the interpretation, as plain text (stored in history). */
+    public String toPlainText() {
+        StringBuilder sb = new StringBuilder();
+        for (Line l : lines) sb.append(l.label).append(": ").append(l.value).append('\n');
+        if (sb.length() > 0) sb.append('\n');
+        return sb.append(message).toString();
+    }
+
     public boolean isOk() { return ok; }
     /** The interpretation when {@link #isOk()}, otherwise what went wrong and how to fix it. */
     public String getMessage() { return message; }

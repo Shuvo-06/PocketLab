@@ -1,5 +1,7 @@
 package com.pocketlab.app.ui.recorder;
 
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,8 +10,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -43,6 +48,10 @@ public class RecorderFragment extends Fragment {
     @Nullable private RecordingSession boundSession;
     @Nullable private RecordingSession summarisedSession;
     private final Handler handler = new Handler(Looper.getMainLooper());
+
+    /** Android 13+ asks before showing notifications. Recording works either way. */
+    private final ActivityResultLauncher<String> notificationPermission =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> { });
 
     private final Runnable ticker = new Runnable() {
         @Override
@@ -112,6 +121,7 @@ public class RecorderFragment extends Fragment {
                 ok = vm.resume();
                 break;
             default:
+                askForNotificationPermission();
                 ok = vm.start();
                 break;
         }
@@ -119,6 +129,15 @@ public class RecorderFragment extends Fragment {
             Snackbar.make(binding.getRoot(), R.string.recorder_start_failed, Snackbar.LENGTH_SHORT).show();
         }
         refresh();
+    }
+
+    private void askForNotificationPermission() {
+        // compileSdk 32 has no Manifest.permission.POST_NOTIFICATIONS constant, so the name is a string.
+        String permission = "android.permission.POST_NOTIFICATIONS";
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(requireContext(), permission)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermission.launch(permission);
+        }
     }
 
     @Override

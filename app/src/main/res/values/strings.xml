@@ -52,14 +52,7 @@
     <string name="analysis_period">Estimated period (%1$s): %2$.3f s ± %3$.3f s over %4$d cycles (≈ %5$.2f Hz)</string>
     <string name="analysis_note">Based on the newest %1$d samples kept for the graph.</string>
 
-    <!-- Placeholders -->
-    <string name="experiments_title">Guided Experiments</string>
-    <string name="experiments_body">Pendulum, magnetic field, light intensity, and relative height, with step-by-step instructions and automatic analysis.</string>
-    <string name="experiments_phase">Planned: Phase 5</string>
-    <string name="history_title">Experiment History</string>
-    <string name="history_body">Saved sessions will appear here, ready to view, rename, export, or delete.</string>
-    <string name="history_phase">Planned: Phase 6</string>
-
+    <!-- Guided experiments (Phase 5) -->
     <string name="experiments_error">Could not load the experiment list: %1$s</string>
     <string name="experiment_sensor_ok">Needs: %1$s · available</string>
     <string name="experiment_sensor_missing">Needs: %1$s · not available on this device</string>
@@ -80,4 +73,91 @@
     <string name="wizard_not_recording">Not recording</string>
     <string name="wizard_recording">Recording… stops automatically after %1$.0f s</string>
     <string name="wizard_interrupted">The recording was cancelled because the app went to the background. Please run it again.</string>
+
+    <!-- History (Phase 6) -->
+    <string name="history_search_hint">Search by name</string>
+    <string name="history_empty">No saved recordings yet. Finish a recording or an experiment and it appears here.</string>
+    <string name="history_no_matches">No recordings match your search.</string>
+    <string name="history_deleted">Recording deleted</string>
+    <string name="history_undo">Undo</string>
+    <string name="history_meta">%1$s · %2$s · %3$s · %4$d samples</string>
+    <string name="history_meta_detail">%1$s · %2$s · %3$s · %4$s · %5$d samples</string>
+    <string name="history_decimated">The graph and summary use %1$d of %2$d samples.</string>
+    <string name="history_rename">Rename</string>
+    <string name="history_rename_hint">Name</string>
+    <string name="history_delete">Delete</string>
+    <string name="history_delete_title">Delete this recording?</string>
+    <string name="history_delete_message">It will be removed from your history.</string>
+    <string name="history_not_found">This recording could not be found.</string>
+
+    <!-- Export / import (Phase 7) -->
+    <string name="export_button">Share or export</string>
+    <string name="export_title">Share as</string>
+    <string name="export_csv">CSV (spreadsheet)</string>
+    <string name="export_json">JSON (data)</string>
+    <string name="export_xml">XML (can be imported again)</string>
+    <string name="export_pdf">PDF report</string>
+    <string name="export_preparing">Preparing the file…</string>
+    <string name="export_failed">Could not create the file: %1$s</string>
+    <string name="export_chooser">Share recording</string>
+    <string name="import_button">Import</string>
+    <string name="import_reading">Importing…</string>
+    <string name="import_success">Imported \"%1$s\"</string>
+    <string name="import_failed">Import failed: %1$s</string>
+
+    <!-- Background recording (Phase 8) -->
+    <string name="channel_recording">Recording in progress</string>
+    <string name="channel_alerts">Recording alerts</string>
+    <string name="notif_recording_title">Recording %1$s</string>
+    <string name="notif_recording_text">%1$s · %2$s · %3$d samples</string>
+    <string name="notif_stop">Stop</string>
+    <string name="alert_battery_low">Battery low (%1$d%%). The recording continues; stop it to save power.</string>
+    <string name="alert_battery_low_unknown">Battery low. The recording continues; stop it to save power.</string>
+    <string name="alert_battery_stopped">Battery very low (%1$d%%). The recording was stopped and saved.</string>
+    <string name="alert_time_limit">The recording reached its 6 hour limit and was stopped and saved.</string>
+    <string name="about_provider_demo">Provider demo</string>
+
+    <!-- Cloud, accounts, sync (Phase 9) -->
+    <string name="action_cloud">Cloud backup and updates</string>
+    <string name="cloud_online">Online</string>
+    <string name="cloud_offline">Offline: the app works fully; cloud features wait for a connection.</string>
+    <string name="cloud_account_title">Account</string>
+    <string name="cloud_not_configured">Cloud backup is not set up in this build (no Firebase configuration file was included).</string>
+    <string name="cloud_signed_out">Not signed in.</string>
+    <string name="cloud_signed_in_as">Signed in as %1$s</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_sign_in">Sign in</string>
+    <string name="auth_register">Create account</string>
+    <string name="auth_sign_out">Sign out</string>
+    <string name="auth_error_email">Enter a valid email address.</string>
+    <string name="auth_error_short_password">The password must have at least 6 characters.</string>
+    <string name="auth_error_credentials">Wrong email or password.</string>
+    <string name="auth_error_exists">An account with this email already exists. Try signing in.</string>
+    <string name="auth_error_network">No internet connection. Please try again when you are online.</string>
+    <string name="auth_error_other">Sign-in failed. %1$s</string>
+    <string name="cloud_backup_title">Backup</string>
+    <string name="cloud_sign_in_first">Sign in to back up your recordings.</string>
+    <string name="cloud_counts">%1$d recordings on this device, %2$d not backed up yet.</string>
+    <string name="cloud_syncing">Syncing…</string>
+    <string name="cloud_last_ok">Last sync %1$s: %2$s</string>
+    <string name="cloud_last_failed">Last attempt failed: %2$s</string>
+    <string name="sync_done">%1$d uploaded, %2$d downloaded or updated, %3$d conflicts resolved</string>
+    <string name="sync_unexpected_error">Something unexpected went wrong. It will be tried again.</string>
+    <string name="cloud_backup_now">Back up now</string>
+    <string name="cloud_restore">Restore from cloud</string>
+    <string name="cloud_auto">Back up automatically</string>
+    <string name="cloud_wifi_only">Only on Wi-Fi</string>
+    <string name="cloud_note">Backups contain summaries (name, date, results, statistics, markers), not the raw measurements. Deleting a recording here does not delete its backup.</string>
+    <string name="cloud_queued">Started. It runs in the background.</string>
+    <string name="cloud_queued_offline">You are offline. It will run as soon as there is a connection.</string>
+    <string name="exp_updates_title">Experiment definitions</string>
+    <string name="exp_source_downloaded">In use: the version downloaded from the experiment server.</string>
+    <string name="exp_source_bundled">In use: the version built into the app.</string>
+    <string name="exp_updates_not_configured">No experiment server is configured, so only the built-in experiments are used.</string>
+    <string name="exp_updates_last">Last check %1$s: %2$s</string>
+    <string name="exp_updates_check">Check for updates</string>
+    <string name="history_summary_only">Restored from a cloud backup: the summary is available, the raw measurements stayed on the original device.</string>
+
+    <!-- Placeholders -->
 </resources>

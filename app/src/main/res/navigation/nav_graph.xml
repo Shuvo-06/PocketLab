@@ -21,7 +21,7 @@
         android:id="@+id/experimentsFragment"
         android:name="com.pocketlab.app.ui.experiments.ExperimentsFragment"
         android:label="@string/nav_experiments"
-        tools:layout="@layout/fragment_placeholder" />
+        tools:layout="@layout/fragment_experiments" />
 
     <fragment
         android:id="@+id/experimentWizardFragment"
@@ -33,5 +33,17 @@
         android:id="@+id/historyFragment"
         android:name="com.pocketlab.app.ui.history.HistoryFragment"
         android:label="@string/nav_history"
-        tools:layout="@layout/fragment_placeholder" />
+        tools:layout="@layout/fragment_history" />
+
+    <fragment
+        android:id="@+id/sessionDetailFragment"
+        android:name="com.pocketlab.app.ui.history.SessionDetailFragment"
+        android:label="@string/nav_history"
+        tools:layout="@layout/fragment_session_detail" />
+
+    <fragment
+        android:id="@+id/cloudFragment"
+        android:name="com.pocketlab.app.ui.cloud.CloudFragment"
+        android:label="@string/action_cloud"
+        tools:layout="@layout/fragment_cloud" />
 </navigation>

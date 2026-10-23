@@ -23,6 +23,12 @@ public class RecordingSession {
 
     public static final int DEFAULT_CAPACITY = 6000;
 
+    /** Receives every accepted sample (for example to save all of them to the database). */
+    public interface SampleSink {
+        /** {@code values} may be reused by the caller afterwards, so copy what you keep. */
+        void onSample(double timeSeconds, float[] values);
+    }
+
     private final SensorType type;
     private final SamplingRate rate;
     private final List<SeriesBuffer> series;
@@ -39,6 +45,7 @@ public class RecordingSession {
     private long totalSamples;
     private double latestTime;
     private float[] latestValues = new float[0];
+    private SampleSink sink;
 
     public RecordingSession(SensorType type, SamplingRate rate, int capacity) {
         this.type = type;
@@ -46,6 +53,10 @@ public class RecordingSession {
         List<SeriesBuffer> list = new ArrayList<>();
         for (int i = 0; i < type.getAxes(); i++) list.add(new SeriesBuffer(capacity));
         this.series = Collections.unmodifiableList(list);
+    }
+
+    public void setSampleSink(SampleSink sink) {
+        this.sink = sink;
     }
 
     // ---- state transitions ----
@@ -97,6 +108,7 @@ public class RecordingSession {
         for (int i = 0; i < series.size(); i++) series.get(i).add(t, latestValues[i]);
         estimator.add(ts);
         totalSamples++;
+        if (sink != null) sink.onSample(t, latestValues);
     }
 
     /** Adds a marker at the current recording time. Returns null if not recording yet. */

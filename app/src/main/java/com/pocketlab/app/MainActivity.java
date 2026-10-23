@@ -15,8 +15,9 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pocketlab.app.databinding.ActivityMainBinding;
-import com.pocketlab.app.ui.recorder.RecorderViewModel;
+import com.pocketlab.app.provider.ProviderDemo;
 import com.pocketlab.app.ui.experiments.ExperimentViewModel;
+import com.pocketlab.app.ui.recorder.RecorderViewModel;
 import com.pocketlab.app.util.BuildConfigVersion;
 
 import java.util.HashSet;
@@ -77,6 +78,13 @@ public class MainActivity extends AppCompatActivity {
             showAboutDialog();
             return true;
         }
+        if (item.getItemId() == R.id.action_cloud) {
+            if (navController.getCurrentDestination() == null
+                    || navController.getCurrentDestination().getId() != R.id.cloudFragment) {
+                navController.navigate(R.id.cloudFragment);
+            }
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -91,6 +99,19 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle(R.string.app_name)
                 .setMessage(getString(R.string.about_message, BuildConfigVersion.name(this)))
                 .setPositiveButton(android.R.string.ok, null)
+                .setNeutralButton(R.string.about_provider_demo, (d, w) -> showProviderDemo())
                 .show();
+    }
+
+    /** Runs a few ContentResolver queries against the app's own read-only provider. */
+    private void showProviderDemo() {
+        ProviderDemo.runAsync(this, text -> {
+            if (isFinishing() || isDestroyed()) return;
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.about_provider_demo)
+                    .setMessage(text)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+        });
     }
 }

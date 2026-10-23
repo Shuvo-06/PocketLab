@@ -2,6 +2,17 @@
 // Dolphin | 2021.3.1 Canary 8 pairs with Android Gradle Plugin 7.3.0-alpha08.
 // If sync cannot resolve it: use Tools > AGP Upgrade Assistant, or fall back to
 // AGP 7.1.3 with Gradle 7.2 (gradle-wrapper.properties).
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Used only when app/google-services.json exists (Firebase is optional).
+        classpath 'com.google.gms:google-services:4.3.10'
+    }
+}
+
 plugins {
     id 'com.android.application' version '7.3.0-alpha08' apply false
 }

@@ -1,68 +1,74 @@
-# PocketLab Architecture (Phases 1-4)
+# Architecture
 
-Single-activity app: `MainActivity` hosts a `NavHostFragment`; screens are Fragments
-behind a bottom navigation bar. All UI uses XML layouts + ViewBinding.
+Single-activity app. `MainActivity` hosts a Navigation `NavHostFragment`; screens are Fragments behind a
+bottom bar (Sensors, Recorder, Experiments, History) plus pushed screens (experiment wizard, session
+detail, cloud). UI uses XML layouts with ViewBinding and Material 3.
 
-## Packages (`com.pocketlab.app`)
-| Package | Responsibility | Android deps? |
+## Layers and packages (`com.pocketlab.app`)
+
+| Package | Responsibility | Android classes? |
 |---|---|---|
-| `ui.*` | Fragments, adapters, ViewModels | yes |
-| `ui.widget` | `GraphView` (custom Canvas view) | yes |
-| `sensor` | `SensorHub` (SensorManager wrapper), `SensorType`, `SensorSample`, `SamplingRate`, `RateEstimator`, `ValueFormatter` | only SensorHub/SensorInfo/SensorType constants |
-| `graph` | `SeriesBuffer`, `Marker`, `NiceScale`, `TimeFormat` | no (pure Java) |
-| `recording` | `RecordingSession`, `RecordingState` | no (pure Java) |
-| `analysis` | Scientific maths (Phase 4) | no. Imports nothing from the app or Android |
-| `data` | Phase 6+ persistence/cloud | yes |
+| `ui.*` | Fragments, adapters, ViewModels. No business logic | yes |
+| `ui.widget` | `GraphView`, the custom Canvas graph | yes |
+| `service` | `RecordingController` (owner of the live recording), `RecordingService` (foreground service), `BatteryEventReceiver` + `BatteryPolicy` | mostly (`BatteryPolicy` is pure) |
+| `provider` | Read-only `SessionProvider`, `SessionContract`, `ProviderRoute`, `ProviderDemo` | mostly (`ProviderRoute` is pure) |
+| `work` | WorkManager workers and `SyncScheduler` | yes |
+| `cloud` | Auth (Firebase), Firestore store, sync engine/planner/mapper | `SyncEngine`, `SyncPlanner`, `CloudMapper` are **pure** |
+| `net` | HTTP downloader, disk cache, updater | pure Java (JDK HTTP client) |
+| `export` | CSV/JSON/XML writers, XML reader, importer, PDF report, `TransferManager` | writers/reader/importer pure; PDF and manager Android |
+| `experiment` | JSON config model, parser, analyzers, repository | model/parser/analyzer pure |
+| `recording` | `RecordingSession` state machine, `RecordingSummary` | pure |
+| `graph` | `SeriesBuffer` ring buffer, `NiceScale`, `Marker`, `TimeFormat` | pure |
+| `analysis` | Statistics, filters, peaks, period, regression, physics | pure, imports nothing from the app |
+| `sensor` | `SensorHub` (SensorManager wrapper), `SensorType`, `SamplingRate`, `RateEstimator` | `SensorHub`/`SensorInfo` only |
+| `data` | Room database, entities, DAOs, `SessionRecorder`, `SessionRepository`, recovery | Room parts yes; `SessionRecorder`/`SessionStore` pure |
 
-Dependency rule: `ui -> recording/graph/sensor`; `recording -> graph, sensor`; `analysis -> nothing`.
+**Dependency rule:** `ui → (service, work, export, experiment, data, recording, graph, sensor)`;
+`cloud/export/experiment → analysis, graph, recording, data`; `analysis → nothing`.
+Anything that can be pure Java is, so it is unit-tested on the JVM without a device.
 
-## Sensor layer (Phase 2)
-`SensorHub` (owned by `PocketLabApp`) detects sensors once and hands out `Subscription`s
-(one `registerListener` each; always `cancel()`). `SensorSample` carries the sensor's own
-monotonic timestamp. `SamplingRate` is a hint; `RateEstimator` measures the real rate.
-Dashboard subscribes in `onStart`, cancels in `onStop`. Callbacks only store state; a 100 ms
-ticker refreshes the UI so UI cost does not scale with sensor rate.
+## Key design decisions
 
-## Recording + graphing (Phase 3)
-- `RecordingSession` (pure Java) is a small state machine: IDLE -> RECORDING <-> PAUSED -> STOPPED.
-  Time axis = seconds since first sample, from sensor timestamps. Pausing drops samples and
-  resuming closes the gap, so the graph continues seamlessly.
-- Memory is bounded: each axis has a `SeriesBuffer` ring buffer (6000 points). The graph shows the
-  newest points; `getTotalSamples()` counts everything. Phase 6 will stream every sample to Room.
-- `RecorderViewModel` is Activity-scoped and owns the subscription, so a recording survives
-  rotation and tab switches. `MainActivity.onStop` pauses an active recording when the app leaves
-  the foreground (not on rotation) until the Phase 8 foreground service exists.
-- `GraphView`: auto-scaling Y axis, "nice" ticks, multi-series legend, dashed event markers,
-  pinch-zoom (time window 1-600 s), drag to pan, double-tap = live view. Dense data is reduced
-  to a min/max envelope per pixel column, which keeps spikes and keeps drawing O(pixels).
-- UI refresh: recorder ticker every 50 ms while visible.
+1. **Interfaces at the Android boundary.** `SessionStore` (database), `SampleSource` (reading samples),
+   `SyncEngine.LocalStore` / `CloudStore` hide Room and Firestore. The chunked writing, the export
+   writers and the whole sync algorithm are tested with in-memory fakes.
+2. **Time comes from sensor timestamps**, not from when callbacks run. Pausing closes the time gap, so
+   graphs and period measurements stay correct.
+3. **Bounded memory everywhere.** The graph keeps a ring buffer (6000 points per axis), the database
+   receives every sample in 500-sample chunks on a writer thread, exports stream from the database in
+   pages, and imports have hard limits (500,000 samples, 64 MB).
+4. **The live recording belongs to the process, not the screen.** `RecordingController` (created in
+   `PocketLabApp`) owns the session, so rotation, closing the screen or leaving the app does not lose
+   it; `RecordingService` keeps the process alive and shows the notification.
+5. **Every long job is off the UI thread:** one single-thread executor per concern (database reads,
+   per-recording writer, export/import) and WorkManager for deferred sync.
+6. **Defensive data handling.** Config JSON, imported XML and cloud documents are all validated; bad
+   input is rejected with a readable message and never half-applied. A bad download never replaces the
+   working experiment cache.
 
-## Decisions
-- Java 11 / AGP 7.3-alpha / API 32 for Studio Dolphin Canary 8 (see README).
-- `allowBackup=false` until Phase 9.
-- Sensors declared `required="false"` so the app installs on any phone.
+## Threading
 
-## Analysis engine (Phase 4)
-Package `analysis` is pure Java and depends on nothing else in the app. Time is in seconds.
-
-| Class | Purpose |
+| Work | Thread |
 |---|---|
-| `Series` | Immutable (time, value) data with validation, `slice`, `demeaned`, `averageRateHz` |
-| `Stats`, `SummaryStats` | mean, sample/population std-dev, min, max, median, RMS |
-| `LowPassFilter` | First-order filter using real time steps; `filterZeroPhase` removes lag |
-| `PeakDetector` | Local maxima filtered by prominence and minimum separation |
-| `PeriodEstimator` | Period from peaks, or from mean-level rising crossings with interpolation and a hysteresis noise band |
-| `LinearRegression` | Least squares: slope, intercept, R², slope standard error |
-| `ErrorMetrics` | Absolute and percentage error (NaN when the reference is 0) |
-| `PhysicsFormulas` | Pendulum g and period, barometric altitude and height change |
+| Sensor callbacks, UI refresh tickers | main |
+| Recording writes (`SessionRecorder`) | one single-thread executor per recording (session row first, chunks in order) |
+| History reads, rename, delete, sync counts | repository's single-thread executor (so a read always sees earlier writes) |
+| Export, import | `TransferManager` single-thread executor |
+| Cloud sync, experiment update | WorkManager worker threads |
+| ContentProvider queries | caller's binder thread |
 
-Design notes:
-- Zero-crossing period estimation beats peak spacing for a pendulum: it ignores gravity offset and is
-  finer than the sample spacing (peaks are quantised to one sample).
-- Hysteresis (the recorder uses 25 % of the signal spread) stops sensor noise from creating false cycles.
-- Undefined results are explicit: `NaN` (std-dev of one value, % error vs 0) or `null` (too few cycles).
-  Callers must check; the UI shows "–" or omits the line.
-- `recording.RecordingSummary` is the only bridge: it converts graph buffers to `Series` and runs the
-  engine. The recorder shows it after Stop. It uses the samples still in the buffer; Phase 6 will use all.
-- Phase 5 experiments will combine these pieces, for example pendulum = detrend, zero-phase filter,
-  period, then `gravityFromPendulum`, then `percentageError` against 9.80665.
+## Main flows
+
+**Recording:** `RecorderFragment` → `RecorderViewModel` → `RecordingController.start()` → subscribes to
+`SensorHub`, creates `RecordingSession` + `SessionRecorder`, starts `RecordingService`. Samples flow
+`SensorHub → controller → RecordingSession → (graph buffers, SessionRecorder → Room)`. Stop saves the
+session and asks `SyncScheduler` to back it up soon (if automatic backup is on).
+
+**Experiment:** `ExperimentWizardFragment` ↔ `ExperimentViewModel` (pages, inputs, run). On finish
+`ExperimentAnalyzer` combines `analysis` building blocks; a successful run is saved with its result text.
+
+**Sync:** `SyncWorker` → `CloudSync` → `SyncEngine(RoomLocalStore, FirestoreCloudStore)` with
+`SyncPlanner` deciding upload / apply / restore per recording (see `ALGORITHMS.md`).
+
+**Experiment definitions:** `ExperimentRepository` prefers the disk cache written by
+`ExperimentUpdater`; if missing or invalid it falls back to `assets/experiments.json`.

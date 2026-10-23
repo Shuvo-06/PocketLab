@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Address of a hosted experiments.json (same format as app/src/main/assets/experiments.json).
+        Must start with https://. Leave EMPTY to use only the built-in experiments.
+        Example: https://raw.githubusercontent.com/YOUR-NAME/pocketlab-config/main/experiments.json
+    -->
+    <string name="experiments_url" translatable="false"></string>
+</resources>

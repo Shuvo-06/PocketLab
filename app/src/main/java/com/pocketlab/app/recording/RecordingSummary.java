@@ -47,7 +47,11 @@ public final class RecordingSummary {
     }
 
     public static RecordingSummary of(RecordingSession session) {
-        List<SeriesBuffer> buffers = session.getSeries();
+        return of(session.getSeries(), session.isGraphTruncated());
+    }
+
+    /** Same analysis for buffers that did not come from a live session (for example saved history). */
+    public static RecordingSummary of(List<SeriesBuffer> buffers, boolean truncated) {
         int n = buffers.get(0).size();
         if (n == 0) {
             return new RecordingSummary(new ArrayList<>(), null, -1, 0, false);
@@ -78,7 +82,7 @@ public final class RecordingSummary {
             p = PeriodEstimator.fromZeroCrossings(bestSeries, 0.25 * bestStd);
             if (p != null && p.getPeriodCount() < 2) p = null;
         }
-        return new RecordingSummary(axes, p, p == null ? -1 : bestAxis, n, session.isGraphTruncated());
+        return new RecordingSummary(axes, p, p == null ? -1 : bestAxis, n, truncated);
     }
 
     public List<Axis> getAxes() { return axes; }

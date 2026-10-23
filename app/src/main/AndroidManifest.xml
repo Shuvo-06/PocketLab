@@ -3,7 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.pocketlab.app">
 
-    <!-- Later phases add: POST_NOTIFICATIONS (API 33+), FOREGROUND_SERVICE. -->
+    <!-- Background recording: a foreground service, a notification (API 33+ asks the user), and a
+         time-limited wake lock so the CPU keeps collecting samples while the screen is off. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Android 12+ caps sensors at 200 Hz without this normal (no prompt) permission. -->
@@ -34,5 +38,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Keeps a recording running in the background. Targeting Android 14 (API 34) later also needs
+             the FOREGROUND_SERVICE_DATA_SYNC (or specialUse) permission for this service type. -->
+        <service
+            android:name=".service.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Read-only access to saved sessions. Not exported: only this app can query it. -->
+        <provider
+            android:name=".provider.SessionProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false" />
+
+        <!-- Lets other apps read exported files (cache/exports/) that we share. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
