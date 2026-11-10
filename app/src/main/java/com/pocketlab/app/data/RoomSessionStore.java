@@ -24,6 +24,7 @@ public final class RoomSessionStore implements SessionStore {
         e.kind = h.kind.name();
         e.experimentId = h.experimentId;
         e.experimentTitle = h.experimentTitle;
+        e.ownerUid = h.ownerUid;
         e.complete = false;
         return db.sessionDao().insert(e);
     }

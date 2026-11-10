@@ -22,12 +22,15 @@ public final class SyncPlanner {
         public final long localId;       // 0 for RESTORE
         public final String cloudId;     // null only for UPLOAD of a never-backed-up recording
         public final boolean conflict;
+        /** UPLOAD only: also upload the raw samples (first upload, or the cloud copy was lost). */
+        public final boolean fullUpload;
 
-        Action(Type type, long localId, String cloudId, boolean conflict) {
+        Action(Type type, long localId, String cloudId, boolean conflict, boolean fullUpload) {
             this.type = type;
             this.localId = localId;
             this.cloudId = cloudId;
             this.conflict = conflict;
+            this.fullUpload = fullUpload;
         }
     }
 
@@ -50,24 +53,25 @@ public final class SyncPlanner {
 
             if (l.cloudId == null || r == null) {
                 // Never backed up, or the cloud copy is gone: (re)create it.
-                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, false));
+                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, false, true));
                 continue;
             }
             boolean localChanged = l.modifiedAt > l.syncedAt;
             boolean remoteChanged = r.modifiedAt > l.syncedAt;
             if (!localChanged && !remoteChanged) continue;
+            // Raw samples never change after recording, so a rename only re-uploads the summary.
             if (localChanged && !remoteChanged) {
-                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, false));
+                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, false, false));
             } else if (!localChanged) {
-                add(plan, canDownload, new Action(Type.APPLY_REMOTE, l.localId, l.cloudId, false));
+                add(plan, canDownload, new Action(Type.APPLY_REMOTE, l.localId, l.cloudId, false, false));
             } else if (l.modifiedAt >= r.modifiedAt) {                       // conflict: local is newer
-                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, true));
+                add(plan, canUpload, new Action(Type.UPLOAD, l.localId, l.cloudId, true, false));
             } else {                                                          // conflict: cloud is newer
-                add(plan, canDownload, new Action(Type.APPLY_REMOTE, l.localId, l.cloudId, true));
+                add(plan, canDownload, new Action(Type.APPLY_REMOTE, l.localId, l.cloudId, true, false));
             }
         }
         for (String cloudId : remote.keySet()) {
-            if (!known.contains(cloudId)) add(plan, canDownload, new Action(Type.RESTORE, 0, cloudId, false));
+            if (!known.contains(cloudId)) add(plan, canDownload, new Action(Type.RESTORE, 0, cloudId, false, false));
         }
         return plan;
     }

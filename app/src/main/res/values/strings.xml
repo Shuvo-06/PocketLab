@@ -7,8 +7,6 @@
     <string name="nav_experiments">Experiments</string>
     <string name="nav_history">History</string>
 
-    <string name="action_about">About</string>
-    <string name="about_message">A smartphone-based scientific utility for guided physics experiments.\n\nVersion %1$s\n\nResults are estimates, not laboratory-grade measurements.</string>
 
     <!-- Dashboard (Phase 2) -->
     <string name="dashboard_summary">%1$d of %2$d sensors available on this device</string>
@@ -117,6 +115,20 @@
     <string name="alert_time_limit">The recording reached its 6 hour limit and was stopped and saved.</string>
     <string name="about_provider_demo">Provider demo</string>
 
+    <string name="login_offline">No internet connection. Connect to sign in, or continue without an account.</string>
+
+    <!-- Offline banner and upload queue -->
+    <string name="offline_banner">You are offline. Your work is saved on this phone.</string>
+    <plurals name="offline_banner_pending">
+        <item quantity="one">You are offline. %d item will upload when you are back online.</item>
+        <item quantity="other">You are offline. %d items will upload when you are back online.</item>
+    </plurals>
+    <string name="online_back">Back online.</string>
+    <plurals name="online_back_saving">
+        <item quantity="one">Back online. Saving %d item to the cloud.</item>
+        <item quantity="other">Back online. Saving %d items to the cloud.</item>
+    </plurals>
+
     <!-- Cloud, accounts, sync (Phase 9) -->
     <string name="action_cloud">Cloud backup and updates</string>
     <string name="cloud_online">Online</string>
@@ -158,6 +170,46 @@
     <string name="exp_updates_last">Last check %1$s: %2$s</string>
     <string name="exp_updates_check">Check for updates</string>
     <string name="history_summary_only">Restored from a cloud backup: the summary is available, the raw measurements stayed on the original device.</string>
+
+    <!-- Login page, profile, notifications (accounts update) -->
+    <string name="login_subtitle">Sign in to keep your recordings and profile on all your devices.</string>
+    <string name="login_name">Your name (optional)</string>
+    <string name="login_to_register">New here? Create an account</string>
+    <string name="login_to_sign_in">I already have an account</string>
+    <string name="login_forgot">Forgot password?</string>
+    <string name="login_reset_sent">If %1$s has an account, a password reset email is on its way.</string>
+    <string name="login_guest">Continue without an account</string>
+    <string name="login_guest_note">Without an account your recordings stay on this phone only. You can sign in later and they will be added to your account.</string>
+    <string name="action_profile">Profile</string>
+    <string name="profile_guest_name">Guest</string>
+    <string name="profile_guest_hint">Not signed in. Sign in to keep your data on all your devices.</string>
+    <string name="profile_since">Member since %1$s</string>
+    <string name="profile_stats">%1$d recordings on this device, %2$d not backed up yet.</string>
+    <string name="profile_stats_local">%1$d recordings on this device (not backed up).</string>
+    <string name="profile_save_name">Save name</string>
+    <string name="profile_name_empty">Enter a name</string>
+    <string name="profile_name_saved">Name saved</string>
+    <string name="profile_sign_out_message">You can sign in again at any time. Your recordings stay safe in your account.</string>
+    <string name="profile_sign_out_unsynced">%1$d recordings are not backed up yet. They stay on this phone under your account and are uploaded when you sign in again.</string>
+    <string name="profile_notifications_title">Notifications</string>
+    <string name="profile_notifications_switch">Tell me when a recording is saved, a backup finishes, or new experiments arrive</string>
+    <string name="profile_notification_settings">System settings</string>
+    <string name="profile_no_app_for_action">No app on this phone can do that.</string>
+    <string name="profile_feedback">Send feedback</string>
+    <string name="channel_events">Recordings, backups and updates</string>
+    <string name="notif_saved_title">Recording saved</string>
+    <string name="notif_saved_text">%1$s · %2$s · %3$d samples. Tap to open your history.</string>
+    <string name="notif_sync_title">Backup finished</string>
+    <string name="notif_sync_failed_title">Backup problem</string>
+    <string name="notif_experiments_title">New experiments available</string>
+    <string name="notif_experiments_text">%1$d experiments were downloaded. Tap to see them.</string>
+    <string name="cloud_open_profile">Open profile</string>
+    <string name="live_title">Live on your account</string>
+    <string name="live_needs_account">Sign in to see what your other devices are recording.</string>
+    <string name="live_none">No device is recording right now.</string>
+    <string name="live_this_device">This device is recording %1$s (%2$d samples).</string>
+    <string name="live_other_device">%1$s is recording %2$s right now (%3$d samples).</string>
+    <string name="wizard_analysing">Analysing… (if you entered coordinates, today\'s sea-level pressure is fetched first)</string>
 
     <!-- Placeholders -->
 </resources>

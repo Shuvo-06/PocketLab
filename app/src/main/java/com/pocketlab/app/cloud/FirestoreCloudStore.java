@@ -15,13 +15,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Cloud storage in Firestore: {@code users/{uid}/sessions/{cloudId}}. Blocking calls; use only
+ * Summaries in Cloud Firestore (see {@link FirebaseCloudStore} for the raw samples): {@code users/{uid}/sessions/{cloudId}}. Blocking calls; use only
  * from a background thread (WorkManager). Required security rules (Firebase console):
  * <pre>
  * match /users/{uid}/{document=**} { allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid; }
  * </pre>
  */
-final class FirestoreCloudStore implements SyncEngine.CloudStore {
+final class FirestoreCloudStore {
 
     private static final long TIMEOUT_SECONDS = 30;
 
@@ -31,8 +31,7 @@ final class FirestoreCloudStore implements SyncEngine.CloudStore {
         sessions = FirebaseFirestore.getInstance().collection("users").document(uid).collection("sessions");
     }
 
-    @Override
-    public Map<String, CloudSession> fetchAll() throws SyncException {
+    Map<String, CloudSession> fetchAll() throws SyncException {
         try {
             // Source.SERVER: when offline this fails instead of silently returning stale cached data.
             QuerySnapshot snap = Tasks.await(sessions.get(Source.SERVER), TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -50,8 +49,7 @@ final class FirestoreCloudStore implements SyncEngine.CloudStore {
         }
     }
 
-    @Override
-    public void put(String cloudId, CloudSession session) throws SyncException {
+    void put(String cloudId, CloudSession session) throws SyncException {
         try {
             Tasks.await(sessions.document(cloudId).set(CloudMapper.toMap(session)), TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {

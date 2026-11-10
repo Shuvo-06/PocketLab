@@ -12,6 +12,8 @@ import com.pocketlab.app.cloud.SyncException;
 import com.pocketlab.app.cloud.SyncMode;
 import com.pocketlab.app.cloud.SyncPrefs;
 import com.pocketlab.app.cloud.SyncResult;
+import com.pocketlab.app.service.Notifier;
+import com.pocketlab.app.util.AppDestination;
 
 /**
  * Background cloud sync. WorkManager runs it when the network constraint is met, survives app
@@ -41,12 +43,21 @@ public class SyncWorker extends Worker {
         prefs.setRunning(true);
         try {
             SyncResult r = CloudSync.run(c, mode);
-            prefs.recordSuccess(c.getString(R.string.sync_done, r.uploaded, r.restored + r.appliedFromCloud, r.conflicts));
+            String summary = c.getString(R.string.sync_done, r.uploaded, r.restored + r.appliedFromCloud, r.conflicts);
+            prefs.recordSuccess(summary);
+            if (r.changedAnything()) {
+                // Shown even when the app is closed; tapping it opens the Cloud screen.
+                Notifier.event(c, Notifier.ID_SYNC, c.getString(R.string.notif_sync_title), summary, AppDestination.CLOUD);
+            }
             return Result.success();
         } catch (SyncException e) {
             prefs.recordFailure(e.getMessage());
             // Retrying only helps for temporary problems; sign-in, rules or setup need the user.
-            return e.isTransient() && getRunAttemptCount() < MAX_ATTEMPTS ? Result.retry() : Result.failure();
+            boolean retry = e.isTransient() && getRunAttemptCount() < MAX_ATTEMPTS;
+            if (!retry) {
+                Notifier.event(c, Notifier.ID_SYNC, c.getString(R.string.notif_sync_failed_title), e.getMessage(), AppDestination.CLOUD);
+            }
+            return retry ? Result.retry() : Result.failure();
         } catch (RuntimeException e) {
             prefs.recordFailure(c.getString(R.string.sync_unexpected_error));
             return getRunAttemptCount() < MAX_ATTEMPTS ? Result.retry() : Result.failure();

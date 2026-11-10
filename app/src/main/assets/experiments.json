@@ -10,16 +10,42 @@
       "minSeconds": 12,
       "maxSeconds": 30,
       "method": "PENDULUM_GRAVITY",
-      "params": { "axis": 0, "trimStartSeconds": 2, "trimEndSeconds": 1, "cutoffHz": 3 },
-      "references": [ { "label": "Standard gravity", "value": 9.80665, "unit": "m/s²" } ],
+      "params": {
+        "axis": 0,
+        "trimStartSeconds": 2,
+        "trimEndSeconds": 1,
+        "cutoffHz": 3
+      },
+      "references": [
+        {
+          "label": "Standard gravity",
+          "value": 9.80665,
+          "unit": "m/s²"
+        }
+      ],
       "inputs": [
-        { "key": "length", "label": "Pendulum length L", "unit": "m", "min": 0.2, "max": 3.0,
-          "hint": "Measure from the pivot to the centre of the phone." }
+        {
+          "key": "length",
+          "label": "Pendulum length L",
+          "unit": "m",
+          "min": 0.2,
+          "max": 3.0,
+          "hint": "Measure from the pivot to the centre of the phone."
+        }
       ],
       "steps": [
-        { "title": "Build the pendulum", "text": "Fasten the phone securely in a bag or cloth sling hanging from a string, 0.5 to 2 m long. Make sure it cannot fall or hit anything." },
-        { "title": "Orient the phone", "text": "Hang it with the screen facing you and swing it left and right across your view. This points the phone's X axis along the swing, which is the axis PocketLab analyses." },
-        { "title": "Swing gently", "text": "Pull it aside by less than 15 degrees (about 25 cm per metre of string), release without pushing, and avoid twisting." }
+        {
+          "title": "Build the pendulum",
+          "text": "Fasten the phone securely in a bag or cloth sling hanging from a string, 0.5 to 2 m long. Make sure it cannot fall or hit anything."
+        },
+        {
+          "title": "Orient the phone",
+          "text": "Hang it with the screen facing you and swing it left and right across your view. This points the phone's X axis along the swing, which is the axis PocketLab analyses."
+        },
+        {
+          "title": "Swing gently",
+          "text": "Pull it aside by less than 15 degrees (about 25 cm per metre of string), release without pushing, and avoid twisting."
+        }
       ],
       "recordHint": "Press Start, then release the pendulum. Let it swing for at least 12 seconds. It stops by itself after 30 seconds."
     },
@@ -32,11 +58,26 @@
       "minSeconds": 15,
       "maxSeconds": 40,
       "method": "MAGNETIC_FIELD",
-      "params": { "baselineSeconds": 5 },
-      "references": [ { "label": "Earth's field (typical at the surface)", "min": 25, "max": 65, "unit": "µT" } ],
+      "params": {
+        "baselineSeconds": 5
+      },
+      "references": [
+        {
+          "label": "Earth's field (typical at the surface)",
+          "min": 25,
+          "max": 65,
+          "unit": "µT"
+        }
+      ],
       "steps": [
-        { "title": "Find a magnet", "text": "A fridge magnet or a speaker magnet works. Keep it at least 50 cm from the phone until you are told to bring it closer." },
-        { "title": "Find the sensor", "text": "The magnetometer is usually near the top edge of the phone. Phones differ, so move the magnet slowly around that area." }
+        {
+          "title": "Find a magnet",
+          "text": "A fridge magnet or a speaker magnet works. Keep it at least 50 cm from the phone until you are told to bring it closer."
+        },
+        {
+          "title": "Find the sensor",
+          "text": "The magnetometer is usually near the top edge of the phone. Phones differ, so move the magnet slowly around that area."
+        }
       ],
       "recordHint": "Press Start. Keep the magnet far away for the first 5 seconds (the baseline), then bring it slowly toward the phone and away again."
     },
@@ -50,18 +91,64 @@
       "maxSeconds": 30,
       "method": "LIGHT_LEVEL",
       "references": [
-        { "label": "Dark room or night", "min": 0, "max": 10, "unit": "lx" },
-        { "label": "Dim indoor light", "min": 10, "max": 100, "unit": "lx" },
-        { "label": "Typical home lighting", "min": 100, "max": 300, "unit": "lx" },
-        { "label": "Office lighting", "min": 300, "max": 500, "unit": "lx" },
-        { "label": "Very bright indoor light or window", "min": 500, "max": 1000, "unit": "lx" },
-        { "label": "Overcast daylight", "min": 1000, "max": 10000, "unit": "lx" },
-        { "label": "Daylight in the shade", "min": 10000, "max": 32000, "unit": "lx" },
-        { "label": "Direct sunlight", "min": 32000, "max": 130000, "unit": "lx" }
+        {
+          "label": "Dark room or night",
+          "min": 0,
+          "max": 10,
+          "unit": "lx"
+        },
+        {
+          "label": "Dim indoor light",
+          "min": 10,
+          "max": 100,
+          "unit": "lx"
+        },
+        {
+          "label": "Typical home lighting",
+          "min": 100,
+          "max": 300,
+          "unit": "lx"
+        },
+        {
+          "label": "Office lighting",
+          "min": 300,
+          "max": 500,
+          "unit": "lx"
+        },
+        {
+          "label": "Very bright indoor light or window",
+          "min": 500,
+          "max": 1000,
+          "unit": "lx"
+        },
+        {
+          "label": "Overcast daylight",
+          "min": 1000,
+          "max": 10000,
+          "unit": "lx"
+        },
+        {
+          "label": "Daylight in the shade",
+          "min": 10000,
+          "max": 32000,
+          "unit": "lx"
+        },
+        {
+          "label": "Direct sunlight",
+          "min": 32000,
+          "max": 130000,
+          "unit": "lx"
+        }
       ],
       "steps": [
-        { "title": "Choose a spot", "text": "Place the phone flat where you want to measure, screen up. Do not cover the sensor, which is usually next to the front camera." },
-        { "title": "Keep conditions steady", "text": "Avoid moving shadows and keep your body from blocking the light." }
+        {
+          "title": "Choose a spot",
+          "text": "Place the phone flat where you want to measure, screen up. Do not cover the sensor, which is usually next to the front camera."
+        },
+        {
+          "title": "Keep conditions steady",
+          "text": "Avoid moving shadows and keep your body from blocking the light."
+        }
       ],
       "recordHint": "Press Start and keep the phone still for at least 5 seconds."
     },
@@ -74,14 +161,51 @@
       "minSeconds": 25,
       "maxSeconds": 120,
       "method": "RELATIVE_HEIGHT",
-      "params": { "windowSeconds": 6 },
+      "params": {
+        "windowSeconds": 6
+      },
       "inputs": [
-        { "key": "knownHeight", "label": "Known height change (optional)", "unit": "m", "min": -500, "max": 500,
-          "required": false, "hint": "Positive if you go up. One building floor is about 3 m." }
+        {
+          "key": "knownHeight",
+          "label": "Known height change (optional)",
+          "unit": "m",
+          "min": -500,
+          "max": 500,
+          "required": false,
+          "hint": "Positive if you go up. One building floor is about 3 m."
+        },
+        {
+          "key": "latitude",
+          "label": "Your latitude (optional)",
+          "unit": "°",
+          "min": -90,
+          "max": 90,
+          "required": false,
+          "hint": "For altitude above sea level. Find it in any maps app, for example 23.78. Needs internet; leave empty to skip."
+        },
+        {
+          "key": "longitude",
+          "label": "Your longitude (optional)",
+          "unit": "°",
+          "min": -180,
+          "max": 180,
+          "required": false,
+          "hint": "For example 90.40. Enter both coordinates or neither."
+        }
       ],
       "steps": [
-        { "title": "Pick two levels", "text": "Choose two places at different heights, ideally several floors (10 m or more) apart. A bigger difference gives a more reliable result." },
-        { "title": "Work quickly", "text": "Weather changes also shift the pressure, so do the whole run within a few minutes." }
+        {
+          "title": "Pick two levels",
+          "text": "Choose two places at different heights, ideally several floors (10 m or more) apart. A bigger difference gives a more reliable result."
+        },
+        {
+          "title": "Work quickly",
+          "text": "Weather changes also shift the pressure, so do the whole run within a few minutes."
+        },
+        {
+          "title": "Optional: altitude above sea level",
+          "text": "If you enter your latitude and longitude, PocketLab asks a free weather service (Open-Meteo) for today's sea-level pressure and also reports your altitude above sea level. Only these two numbers are sent, nothing else."
+        }
       ],
       "recordHint": "Press Start and hold still for the first 6 seconds. Move to the other level, then hold still for the last 6 seconds before pressing Stop."
     }

@@ -4,19 +4,18 @@
 
 | Level | What | How it runs |
 |---|---|---|
-| **Unit tests** (`app/src/test`) | All logic that does not need Android: sensors maths, graph buffer, recording state machine, analysis, experiment config + analysers, export writers, XML reader/importer, sync planner + engine, cloud mapper, HTTP downloader/cache/updater, battery policy, provider routing | JVM, `./gradlew testDebugUnitTest` |
+| **Unit tests** (`app/src/test`) | All logic that does not need Android: sensor maths, graph buffer, recording state machine, analysis, experiment config + analysers, export writers, XML reader/importer, sync planner + engine (incl. raw-data upload/restore), cloud mapper, HTTP downloader/cache/updater, weather API client, battery policy, provider routing, notification destinations | JVM, `./gradlew testDebugUnitTest` |
 | **Instrumented tests** (`app/src/androidTest`) | Real Room database, ContentProvider through a ContentResolver, crash recovery, UI smoke test | device or emulator, `./gradlew connectedDebugAndroidTest` |
-| **Manual tests** | Sensors on a real phone, notification/background behaviour, PDF look, Firebase | checklist below |
+| **Manual tests** | Sensors on a real phone, notifications and background behaviour, login and Firebase, PDF look | checklist below |
 
 Design for testability: Android-specific code sits behind small interfaces (`SessionStore`, `SampleSource`,
-`SyncEngine.LocalStore/CloudStore`), so the algorithms around them are tested with in-memory fakes.
-Algorithms are checked against **synthetic signals** with known answers (a sine with a known period must give that
-period; a pendulum of length L must give g ≈ 9.81; a pressure drop of 1 hPa must give ≈ 8.3 m) and against
-hand-computed values.
+`SyncEngine.LocalStore/CloudStore`), so the algorithms around them are tested with in-memory fakes. Network code uses only
+the JDK HTTP client and is tested against a real local test server. Algorithms are checked against **synthetic signals**
+with known answers and hand-computed values.
 
 ## Results
 
-**Unit tests: 167 tests, 29 classes, all passing.**
+**Unit tests: 187 tests, 31 classes, all passing.**
 
 | Area | Tests |
 |---|---|
@@ -25,61 +24,69 @@ hand-computed values.
 | sensor (types, rates, rate estimator, formatter) | 13 |
 | recording (state machine, sample sink, summary) | 16 |
 | data (chunked recorder, names/LIKE escaping) | 7 |
-| experiment (config parser + input validation, analysers) | 21 |
+| experiment (config parser + input validation, analysers incl. altitude from the weather reference) | 23 |
 | export (CSV/JSON writers, summary, file names, XML round trip + rejection cases, importer) | 18 |
-| cloud (mapper, planner, engine incl. failure/conflict cases) | 18 |
-| net (HTTP download against a local test server: ETag, 304, 404, 500, oversize, offline, HTTPS rule; cache) | 5 |
-| service / provider (battery policy, URI routes) | 12 |
+| cloud (mapper; planner and engine incl. conflicts, failures, raw-data upload/restore/cleanup) | 29 |
+| net (experiment download: ETag, 304, 404, 500, oversize, offline, HTTPS rule, cache; weather API: parsing, bad data, errors, coordinates) | 9 |
+| service / provider / util (battery policy, URI routes, notification destinations) | 15 |
 
 **Instrumented tests: 16** (`AppDatabaseTest` 6, `SessionRecoveryTest` 3, `SessionProviderTest` 5, `MainActivityTest` 2).
 
-> **Important and honest note:** the unit tests were executed on a desktop JDK against the pure-Java sources. The
-> Android-specific code (screens, service, Room, Firebase, WorkManager, PDF) could not be compiled or run in the
-> environment where the project was written, so run **Sync → Build → unit tests → instrumented tests** once in
-> Android Studio and treat any compile message as a normal first-run fix.
+> **Honest note:** the unit tests were executed on a desktop JDK against the pure-Java sources. The Android-specific code
+> (screens, login, service, notifications, Room, Firebase, WorkManager, PDF) could not be compiled or run where the project
+> was written, so run **Sync → Build → unit tests → instrumented tests** once in Android Studio and treat any compile message
+> as a normal first-run fix. Static checks were run on all XML files, string/drawable/layout references, view ids used by the
+> code, and manifest/navigation class names.
 
 ## Manual test checklist (use a physical phone)
 
-**Sensors and recording**
-- [ ] Sensors tab shows 5 cards; missing sensors are dimmed with "Not available". Values move when the phone moves.
-- [ ] Changing the sampling chip changes the measured Hz.
-- [ ] Recorder: Start → graph draws; Pause/Resume leaves no jump; Marker adds a dashed line; Stop shows a summary.
-- [ ] Pinch zooms the graph, drag pans, double-tap returns to live.
-- [ ] Rotate the phone mid-recording: recording continues.
+**Sensor picker (bug fix)**
+- [ ] Recorder → Sensor dropdown lists **every** available sensor, every time it is opened (also after rotating, after
+      switching tabs, and after choosing one).
+- [ ] Choose Gyroscope, Start: the graph legend and the status show Gyroscope (repeat for Magnetometer, Light, Barometer).
 
-**Background**
-- [ ] Start, press Home, lock the screen for 1 minute: the notification stays, the sample count keeps rising.
-- [ ] Notification **Stop** ends the recording and it appears in History.
-- [ ] Swipe the app from recents mid-recording: still recording; Stop still saves.
-- [ ] Force-stop mid-recording, reopen: a "(recovered)" session exists.
-- [ ] Android 13+: the notification permission prompt appears once.
+**Login, profile, data across devices** (needs `docs/CLOUD_SETUP.md`)
+- [ ] First start shows the **login page**. Wrong password, short password, bad email, existing email: friendly messages.
+- [ ] Create an account (with a name), sign in, sign out, sign in again. "Forgot password?" sends an email.
+- [ ] Profile shows name, email, member since, recording counts; changing the name is saved.
+- [ ] Record while signed out (guest), then sign in: the guest recordings appear in the account and are backed up.
+- [ ] A second account on the same phone does **not** see the first account's recordings; they return when the first signs in.
+- [ ] Second phone, same account: after signing in, recordings **with their graphs** appear (raw data restored).
+- [ ] Record on phone A; phone B → Cloud screen shows "A is recording … right now" live, and clears when A stops.
+- [ ] Airplane mode: whole app works; Cloud screen says Offline; backup waits and runs when online.
 
-**Experiments**
-- [ ] Pendulum (1 m string, small swings, screen facing you): g within ~10 % of 9.8.
-- [ ] Wrong length input → clear error message; empty input rejected.
-- [ ] Magnet near the phone's top edge: "magnet detected". Light: result matches the room type. Height: use ≥ 3 floors.
-- [ ] Press Home during an experiment run: run is cancelled with a message.
+**Notifications**
+- [ ] Android 13+: the permission prompt appears once at first start.
+- [ ] Record something, press Home, open the shade: the recording notification shows; tap it: the app opens on the Recorder.
+- [ ] Turn on airplane mode: a red banner stays at the top while offline. Record or finish an experiment: the banner shows "1 item will upload". Turn airplane mode off: the banner says "Back online. Saving 1 item to the cloud" and then disappears, and the item appears in the Firebase console.
+- [ ] Record, press Home: ongoing notification with elapsed time; **Stop** saves; tapping the body opens the Recorder.
+- [ ] After Stop: "Recording saved" notification; tapping it opens History.
+- [ ] With the app closed, a backup that uploads something shows "Backup finished"; tapping opens the Cloud screen.
+- [ ] Switch off the notification setting in Profile: information notifications stop (the recording one stays).
+- [ ] Tapping a notification while logged out goes through the login page and then to the target.
 
-**History and export**
-- [ ] Search, rename, swipe-delete + Undo; open a session, graph and summary match.
-- [ ] Share CSV, JSON, XML, PDF; open each. PDF has objective, results, table, graph, disclaimer.
-- [ ] Export XML, delete the session, import the XML: identical session returns. Import a non-PocketLab file: readable error.
-- [ ] About → Provider demo shows 3 queries and "Delete: refused".
+**Sensors, recording, background**
+- [ ] Sensors tab live values; sampling chips change measured Hz; Recorder start/pause/resume/stop/markers; zoom/pan.
+- [ ] Home + screen off for a minute: samples keep rising; swipe from recents: still recording; force-stop: "(recovered)".
 
-**Network and cloud** (needs `docs/CLOUD_SETUP.md`)
-- [ ] Airplane mode: whole app works; Cloud screen says Offline; "Back up now" says it will run when online.
-- [ ] Sign in, Back up now → sessions appear in the Firestore console. Rename on the phone, back up again → document updated.
-- [ ] Second device/emulator, same account, Restore: recordings appear as "summary only".
-- [ ] Wrong password, weak password, existing email: friendly messages.
-- [ ] Experiment server: after hosting a changed file, "Check for updates" says downloaded and the list changes; host an invalid file → rejected, old list kept.
+**Experiments and the weather API**
+- [ ] Pendulum, magnetic, light work as before.
+- [ ] Relative height with latitude and longitude filled and internet on: result shows sea-level pressure and altitudes.
+- [ ] Same with airplane mode: the result still appears, with "Weather reference unavailable".
+- [ ] Only one coordinate filled: a clear message asks for both.
+
+**History, export, provider**
+- [ ] Search, rename, swipe-delete + Undo; share CSV/JSON/XML/PDF; export XML → delete → import XML.
+- [ ] Profile → Provider demo shows queries and "Delete: refused".
 
 ## Known gaps and limitations
 
-* The PDF layout and the Material styling were not seen on a device while writing; send/inspect screenshots.
-* Sensor accuracy depends on the phone (see `REQUIREMENTS.md`); pendulum thresholds were tuned on synthetic data.
-* Room migration 1→2 has no automated migration test (it would need exported schemas); it was reviewed by hand.
-* Cloud backup stores summaries only, is additive (local deletes do not delete backups), and resolves conflicts by
-  newest change time, which assumes reasonably correct phone clocks.
+* The PDF layout and the Material styling were not seen on a device while writing; inspect screenshots.
+* Firebase behaviour (rules, offline queueing, the Realtime Database's responses) could only be written against the
+  documentation; the sync algorithm itself is fully tested with fakes.
+* Backups are additive: deleting a recording on the phone does not delete its backup. Conflicts are decided by newest change time.
+* Raw-data restore is limited to 500,000 samples per recording (bigger ones restore as a summary).
+* Room migrations 1→2 and 2→3 have no automated migration test (it would need exported schemas); they were reviewed by hand.
 * Experiments are cancelled when the app is backgrounded (only free recordings run in the background).
 * On Android 14+ (target SDK 34) the foreground service type permission and receiver export flag need adding.
 * Up to 500 of the very last samples can be lost if the process is killed abruptly.

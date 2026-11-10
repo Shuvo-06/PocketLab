@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "150012448048",
+    "project_id": "pocketlab-6",
+    "storage_bucket": "pocketlab-6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150012448048:android:d260892c0de556ac15ccf5",
+        "android_client_info": {
+          "package_name": "com.pocketlab.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "150012448048-fv51pjlt41d00caoedgu2ir6fqdhs2qk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pocketlab.app",
+            "certificate_hash": "3cceacb4d7a4449b1180ce7312de0196c26e44f6"
+          }
+        },
+        {
+          "client_id": "150012448048-d7a5ns77l4aivs44v7t84g3bkm2l9ju0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3L0EZhCe0dKaPA4lYCymuesGEZh0uxG0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "150012448048-d7a5ns77l4aivs44v7t84g3bkm2l9ju0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -13,12 +13,15 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
+import com.pocketlab.app.PocketLabApp;
 import com.pocketlab.app.R;
+import com.pocketlab.app.work.SyncScheduler;
 
 /**
- * Firebase Authentication with email and password. If the app was built without a
- * {@code google-services.json} Firebase is not initialised; {@link #isConfigured} is then false
- * and the rest of the app simply works without cloud features.
+ * Accounts with Firebase Authentication (email and password). If the app was built without a
+ * {@code google-services.json}, Firebase is not initialised: {@link #isConfigured} is then false, the
+ * login page offers only "continue without an account", and everything else works locally.
  */
 public final class AuthManager {
 
@@ -38,6 +41,27 @@ public final class AuthManager {
         return isConfigured(context) ? FirebaseAuth.getInstance().getCurrentUser() : null;
     }
 
+    /** The signed-in account's uid, or "" when nobody is signed in. Recordings are owned by this value. */
+    public static String uid(Context context) {
+        FirebaseUser u = user(context);
+        return u == null ? "" : u.getUid();
+    }
+
+    /** The login page must be shown: accounts are available, nobody is signed in, and guest mode was not chosen. */
+    public static boolean needsLogin(Context context) {
+        return isConfigured(context) && user(context) == null && !new SyncPrefs(context).isGuest();
+    }
+
+    public static String displayName(Context context) {
+        FirebaseUser u = user(context);
+        if (u == null) return context.getString(R.string.profile_guest_name);
+        if (u.getDisplayName() != null && !u.getDisplayName().trim().isEmpty()) return u.getDisplayName();
+        String email = u.getEmail();
+        return email == null ? context.getString(R.string.profile_guest_name) : email.split("@")[0];
+    }
+
+    // ------------------------------------------------------------------ actions
+
     public static void signIn(Context context, String email, String password, Callback cb) {
         String problem = validate(context, email, password);
         if (problem != null) {
@@ -49,20 +73,84 @@ public final class AuthManager {
                 .addOnFailureListener(e -> cb.onDone(message(context, e)));
     }
 
-    public static void register(Context context, String email, String password, Callback cb) {
+    /** @param displayName optional; blank is fine */
+    public static void register(Context context, String email, String password, String displayName, Callback cb) {
         String problem = validate(context, email, password);
         if (problem != null) {
             cb.onDone(problem);
             return;
         }
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email.trim(), password)
-                .addOnSuccessListener(r -> cb.onDone(null))
+                .addOnSuccessListener(result -> {
+                    String name = displayName == null ? "" : displayName.trim();
+                    FirebaseUser created = result.getUser();
+                    if (name.isEmpty() || created == null) {
+                        cb.onDone(null);
+                        return;
+                    }
+                    created.updateProfile(new UserProfileChangeRequest.Builder().setDisplayName(name).build())
+                            .addOnCompleteListener(t -> cb.onDone(null));   // the account exists even if the name failed
+                })
+                .addOnFailureListener(e -> cb.onDone(message(context, e)));
+    }
+
+    public static void sendPasswordReset(Context context, String email, Callback cb) {
+        if (!isConfigured(context)) {
+            cb.onDone(context.getString(R.string.cloud_not_configured));
+            return;
+        }
+        if (email == null || !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
+            cb.onDone(context.getString(R.string.auth_error_email));
+            return;
+        }
+        FirebaseAuth.getInstance().sendPasswordResetEmail(email.trim())
+                .addOnSuccessListener(v -> cb.onDone(null))
+                .addOnFailureListener(e -> cb.onDone(message(context, e)));
+    }
+
+    public static void updateDisplayName(Context context, String name, Callback cb) {
+        FirebaseUser u = user(context);
+        if (u == null) {
+            cb.onDone(context.getString(R.string.cloud_signed_out));
+            return;
+        }
+        u.updateProfile(new UserProfileChangeRequest.Builder().setDisplayName(name.trim()).build())
+                .addOnSuccessListener(v -> {
+                    ProfileManager.sync(context);
+                    cb.onDone(null);
+                })
                 .addOnFailureListener(e -> cb.onDone(message(context, e)));
     }
 
     public static void signOut(Context context) {
         if (isConfigured(context)) FirebaseAuth.getInstance().signOut();
+        new SyncPrefs(context).setGuest(false);
+        SyncScheduler.applyAutoSync(context, false, true);   // no account, nothing to sync
     }
+
+    /**
+     * Everything that must happen right after a successful sign-in or registration: leave guest mode,
+     * mirror the profile to Firestore, give recordings made without an account to this account, and
+     * start a first sync, which also downloads what was recorded on the user's other devices.
+     */
+    public static void onSignedIn(Context context, Runnable done) {
+        Context app = context.getApplicationContext();
+        SyncPrefs prefs = new SyncPrefs(app);
+        prefs.setGuest(false);
+        FirebaseUser u = user(app);
+        if (u == null) {
+            done.run();
+            return;
+        }
+        ProfileManager.sync(app);
+        ((PocketLabApp) app).getSessionRepository().claimGuestSessions(u.getUid(), claimed -> {
+            SyncScheduler.applyAutoSync(app, prefs.isAutoSync(), prefs.isWifiOnly());
+            SyncScheduler.syncNow(app, SyncMode.SYNC);
+            done.run();
+        });
+    }
+
+    // ------------------------------------------------------------------ helpers
 
     private static String validate(Context context, String email, String password) {
         if (!isConfigured(context)) return context.getString(R.string.cloud_not_configured);

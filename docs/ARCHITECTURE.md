@@ -72,3 +72,34 @@ session and asks `SyncScheduler` to back it up soon (if automatic backup is on).
 
 **Experiment definitions:** `ExperimentRepository` prefers the disk cache written by
 `ExperimentUpdater`; if missing or invalid it falls back to `assets/experiments.json`.
+
+## Accounts, ownership and data across devices
+
+* **Login page** (`LoginActivity`) is shown by `MainActivity` while accounts are available and nobody is signed in
+  (guest mode skips it). Firebase Authentication keeps the user signed in across restarts.
+* **Ownership:** every recording row has an `ownerUid` ("" = recorded without an account). All queries (history, sync,
+  ContentProvider, import) filter by the signed-in account, so accounts on the same phone are isolated. When a guest signs
+  in, their recordings are claimed by the account.
+* **Two Firebase databases, each for what it suits:** Cloud Firestore holds small documents (the profile and one summary per
+  recording); the Realtime Database holds the bulk raw samples (500 per node) and the live "recording now" status.
+* **Sync rules** (`SyncPlanner`/`SyncEngine`, pure and tested): a recording is uploaded as summary + raw samples the first
+  time (samples never change, so a rename only re-uploads the summary); the summary is written **after** the samples, so a
+  summary in the cloud always points at complete data; failed uploads clean up after themselves. Restoring downloads the
+  samples first and stores session and samples in one transaction, so a failed restore leaves nothing half-done.
+* **Live status:** the recording service publishes `status/{uid}` every 5 s with `onDisconnect().removeValue()`; the Cloud
+  screen listens with a `ValueEventListener`, so another device shows it live and the entry disappears by itself if the
+  recording phone loses its connection.
+
+## Notifications
+
+`Notifier` owns three channels (recording: silent and ongoing; alerts: heads-up; events: default) and builds every
+`PendingIntent`. A tap opens `MainActivity` with an `AppDestination` extra (`launchMode="singleTop"`, handled in both
+`onCreate` and `onNewIntent`, then removed so rotation cannot repeat it). Each destination has its own request code, otherwise
+Android would reuse one PendingIntent and ignore the other extras. Notifications are posted from the foreground service and
+from WorkManager workers, so they appear with the app closed. If the login page is in the way, the target is carried through it.
+The user can switch the information notifications off in Profile; Android 13+ asks for the permission once at first start.
+
+## REST API use
+
+`WeatherApi` (Open-Meteo, JSON) runs on a background thread when a Relative-height run finishes with coordinates entered;
+the analysis waits for it, and a failed call only adds a note to the result.

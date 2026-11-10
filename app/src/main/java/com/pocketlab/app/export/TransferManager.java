@@ -7,6 +7,7 @@ import android.os.Looper;
 
 import androidx.annotation.Nullable;
 
+import com.pocketlab.app.cloud.AuthManager;
 import com.pocketlab.app.data.AppDatabase;
 import com.pocketlab.app.data.MarkerEntity;
 import com.pocketlab.app.data.RoomSessionStore;
@@ -176,7 +177,7 @@ public final class TransferManager {
             try (InputStream in = app.getContentResolver().openInputStream(uri)) {
                 if (in == null) throw new IOException("Cannot open the file.");
                 ImportedSession session = XmlSessionReader.read(in);
-                SessionImporter.save(session, new RoomSessionStore(db));
+                SessionImporter.save(session, new RoomSessionStore(db), AuthManager.uid(app));
                 r = new ImportResult(session.name, null);
             } catch (ImportException e) {
                 r = new ImportResult(null, e.getMessage());

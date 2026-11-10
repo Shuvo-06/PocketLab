@@ -57,7 +57,7 @@ public class SessionRecoveryTest {
         assertEquals("Cut short (recovered)", s.name);
         assertEquals(20, s.sampleCount);
         assertEquals(9.5, s.durationSeconds, 1e-9);
-        assertEquals(1, db.sessionDao().search("").size());
+        assertEquals(1, db.sessionDao().search("", "").size());
     }
 
     @Test

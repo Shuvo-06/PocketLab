@@ -12,6 +12,7 @@ import android.database.Cursor;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import com.pocketlab.app.cloud.AuthManager;
 import com.pocketlab.app.data.AppDatabase;
 import com.pocketlab.app.data.RoomSessionStore;
 import com.pocketlab.app.data.SessionHeader;
@@ -42,8 +43,9 @@ public class SessionProviderTest {
         resolver = context.getContentResolver();
         db = AppDatabase.get(context);
         RoomSessionStore store = new RoomSessionStore(db);
+        // The provider shows only the signed-in account's recordings ("" when nobody is signed in).
         id = store.insertSession(new SessionHeader("Provider test", 1, SensorType.ACCELEROMETER,
-                SamplingRate.GAME, SessionKind.FREE, null, null));
+                SamplingRate.GAME, SessionKind.FREE, null, null, AuthManager.uid(context)));
         double[] t = {0, 1, 2, 3, 4};
         float[] v = {1, 2, 3, 4, 5};
         store.insertSamples(id, t, v, v, v, 5);

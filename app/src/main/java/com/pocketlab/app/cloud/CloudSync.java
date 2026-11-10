@@ -5,7 +5,10 @@ import android.content.Context;
 import com.google.firebase.auth.FirebaseUser;
 import com.pocketlab.app.data.AppDatabase;
 
-/** Runs one cloud sync with the real Room database and Firestore. Blocking: background threads only. */
+/**
+ * Runs one cloud sync for the signed-in account with the real Room database, Firestore (summaries)
+ * and the Realtime Database (raw samples). Blocking: background threads only.
+ */
 public final class CloudSync {
 
     private CloudSync() {}
@@ -19,15 +22,9 @@ public final class CloudSync {
         if (user == null) {
             throw new SyncException(SyncException.Category.NOT_SIGNED_IN, "Sign in to use cloud backup.");
         }
-        AppDatabase db = AppDatabase.get(app);
-        SyncPrefs prefs = new SyncPrefs(app);
-
-        // Backup links belong to one account. After switching accounts, forget them so everything
-        // is uploaded to the new account instead of pointing at someone else's documents.
-        if (!user.getUid().equals(prefs.getLastUid())) {
-            db.sessionDao().clearSyncState();
-            prefs.setLastUid(user.getUid());
-        }
-        return SyncEngine.run(new RoomLocalStore(db), new FirestoreCloudStore(user.getUid()), mode);
+        // Recordings are owned by one account, so only this account's recordings are compared with the
+        // cloud, and switching accounts on a device can never mix their data.
+        return SyncEngine.run(new RoomLocalStore(AppDatabase.get(app), user.getUid()),
+                new FirebaseCloudStore(user.getUid()), mode);
     }
 }

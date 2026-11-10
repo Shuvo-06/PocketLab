@@ -11,9 +11,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 /**
  * The app's SQLite database (Room).
  * Version 1: sessions, samples, markers. Version 2: cloud-sync columns on sessions.
+ * Version 3: {@code ownerUid}, so every account only sees its own recordings.
  */
 @Database(entities = {SessionEntity.class, SampleEntity.class, MarkerEntity.class},
-        version = 2, exportSchema = false)
+        version = 3, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract SessionDao sessionDao();
@@ -31,6 +32,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** Existing recordings belong to nobody ("") until someone signs in on this device and claims them. */
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE sessions ADD COLUMN ownerUid TEXT NOT NULL DEFAULT ''");
+        }
+    };
+
     private static volatile AppDatabase instance;
 
     public static AppDatabase get(Context context) {
@@ -39,7 +48,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (instance == null) {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "pocketlab.db")
-                            .addMigrations(MIGRATION_1_2)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                             .build();
                 }
             }

@@ -1,7 +1,6 @@
 package com.pocketlab.app.service;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -15,28 +14,27 @@ import android.os.SystemClock;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-import com.pocketlab.app.MainActivity;
 import com.pocketlab.app.PocketLabApp;
 import com.pocketlab.app.R;
+import com.pocketlab.app.cloud.LiveStatus;
 import com.pocketlab.app.graph.TimeFormat;
 import com.pocketlab.app.recording.RecordingSession;
 import com.pocketlab.app.recording.RecordingState;
+import com.pocketlab.app.util.AppDestination;
 
 /**
- * Foreground service that keeps a recording alive when the app is in the background or the
- * screen is off. It shows an ongoing notification with a Stop action, holds a time-limited
- * partial wake lock while recording, reacts to low battery, and stops itself when the recording
- * ends. The recording itself belongs to {@link RecordingController}.
+ * Foreground service that keeps a recording alive when the app is in the background or the screen is
+ * off. It shows an ongoing notification (tap = back to the app, Stop = save and end), holds a
+ * time-limited partial wake lock while recording, reacts to low battery, publishes live status to the
+ * Realtime Database for the user's other devices, and stops itself when the recording ends.
+ * The recording itself belongs to {@link RecordingController}.
  */
 public class RecordingService extends Service {
 
     static final String ACTION_STOP = "com.pocketlab.app.action.STOP_RECORDING";
 
-    private static final String CHANNEL_RECORDING = "recording";
-    private static final String CHANNEL_ALERTS = "alerts";
-    private static final int NOTIF_RECORDING = 1;
-    private static final int NOTIF_ALERT = 2;
     private static final long TICK_MS = 1000;
+    private static final int LIVE_EVERY_N_TICKS = 5;
     /** Safety limit: a forgotten recording stops (and is saved) after this long. */
     private static final long MAX_RECORDING_MS = 6L * 60 * 60 * 1000;
 
@@ -49,7 +47,10 @@ public class RecordingService extends Service {
     private boolean started;
     private boolean receiverRegistered;
     private boolean shuttingDown;
+    private boolean livePublished;
     private long startedAt;
+    private long startedWallClock;
+    private int ticks;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -61,12 +62,13 @@ public class RecordingService extends Service {
             }
             if (SystemClock.elapsedRealtime() - startedAt > MAX_RECORDING_MS) {
                 controller.stop();
-                alert(getString(R.string.alert_time_limit));
+                Notifier.alert(RecordingService.this, getString(R.string.alert_time_limit), AppDestination.HISTORY);
                 shutDown();
                 return;
             }
             updateWakeLock();
-            notifications.notify(NOTIF_RECORDING, buildNotification());
+            notifications.notify(Notifier.ID_RECORDING, buildNotification());
+            if (ticks++ % LIVE_EVERY_N_TICKS == 0) publishLive();
             handler.postDelayed(this, TICK_MS);
         }
     };
@@ -76,7 +78,7 @@ public class RecordingService extends Service {
         super.onCreate();
         controller = ((PocketLabApp) getApplication()).getRecordingController();
         notifications = getSystemService(NotificationManager.class);
-        createChannels();
+        Notifier.createChannels(this);
         PowerManager pm = getSystemService(PowerManager.class);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PocketLab:recording");
         wakeLock.setReferenceCounted(false);
@@ -90,7 +92,7 @@ public class RecordingService extends Service {
             return START_NOT_STICKY;
         }
         // Started with startForegroundService(): we must call startForeground() promptly.
-        startForeground(NOTIF_RECORDING, buildNotification());
+        startForeground(Notifier.ID_RECORDING, buildNotification());
         if (!controller.isActive()) {
             shutDown();
             return START_NOT_STICKY;
@@ -99,6 +101,7 @@ public class RecordingService extends Service {
         if (!started) {
             started = true;
             startedAt = SystemClock.elapsedRealtime();
+            startedWallClock = System.currentTimeMillis();
             registerReceiver(batteryReceiver, BatteryEventReceiver.filter());
             receiverRegistered = true;
             handler.post(tick);
@@ -114,12 +117,21 @@ public class RecordingService extends Service {
                 : batteryPolicy.onLevel(percent, charging);
         if (d == BatteryPolicy.Decision.STOP_AND_SAVE) {
             controller.stop();
-            alert(getString(R.string.alert_battery_stopped, percent));
+            Notifier.alert(this, getString(R.string.alert_battery_stopped, percent), AppDestination.HISTORY);
             shutDown();
         } else if (d == BatteryPolicy.Decision.WARN) {
-            alert(percent >= 0 ? getString(R.string.alert_battery_low, percent)
-                    : getString(R.string.alert_battery_low_unknown));
+            Notifier.alert(this, percent >= 0 ? getString(R.string.alert_battery_low, percent)
+                    : getString(R.string.alert_battery_low_unknown), AppDestination.RECORDER);
         }
+    }
+
+    // ------------------------------------------------------------------ live status (Realtime Database)
+
+    private void publishLive() {
+        RecordingSession s = controller.getSession();
+        if (s == null) return;
+        livePublished = true;
+        LiveStatus.publish(this, s.getType().getDisplayName(), startedWallClock, s.getTotalSamples());
     }
 
     // ------------------------------------------------------------------ lifecycle helpers
@@ -133,6 +145,7 @@ public class RecordingService extends Service {
             unregisterReceiver(batteryReceiver);
             receiverRegistered = false;
         }
+        if (livePublished) LiveStatus.clear(this);
         controller.setForegroundActive(false);
         stopForeground(true);
         stopSelf();
@@ -160,16 +173,7 @@ public class RecordingService extends Service {
         return null;
     }
 
-    // ------------------------------------------------------------------ notifications
-
-    private void createChannels() {
-        NotificationChannel rec = new NotificationChannel(CHANNEL_RECORDING,
-                getString(R.string.channel_recording), NotificationManager.IMPORTANCE_LOW);
-        NotificationChannel alerts = new NotificationChannel(CHANNEL_ALERTS,
-                getString(R.string.channel_alerts), NotificationManager.IMPORTANCE_HIGH);
-        notifications.createNotificationChannel(rec);
-        notifications.createNotificationChannel(alerts);
-    }
+    // ------------------------------------------------------------------ notification
 
     private Notification buildNotification() {
         RecordingSession s = controller.getSession();
@@ -187,7 +191,7 @@ public class RecordingService extends Service {
         Intent stop = new Intent(this, RecordingService.class).setAction(ACTION_STOP);
         PendingIntent stopPi = PendingIntent.getService(this, 1, stop,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        return new NotificationCompat.Builder(this, CHANNEL_RECORDING)
+        return new NotificationCompat.Builder(this, Notifier.CHANNEL_RECORDING)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
                 .setContentText(text)
@@ -196,28 +200,8 @@ public class RecordingService extends Service {
                 .setShowWhen(false)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .setContentIntent(openAppIntent())
+                .setContentIntent(Notifier.openApp(this, AppDestination.RECORDER))
                 .addAction(0, getString(R.string.notif_stop), stopPi)
                 .build();
-    }
-
-    private void alert(String message) {
-        Notification n = new NotificationCompat.Builder(this, CHANNEL_ALERTS)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(message)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setContentIntent(openAppIntent())
-                .build();
-        notifications.notify(NOTIF_ALERT, n);
-    }
-
-    private PendingIntent openAppIntent() {
-        Intent open = new Intent(this, MainActivity.class)
-                .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        return PendingIntent.getActivity(this, 0, open,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }

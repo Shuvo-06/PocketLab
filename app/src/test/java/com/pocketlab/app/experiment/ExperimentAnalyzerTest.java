@@ -160,6 +160,26 @@ public class ExperimentAnalyzerTest {
         assertEquals(4, r.getLines().size());
     }
 
+
+    @Test
+    public void heightWithWeatherReferenceAddsAltitudeAboveSeaLevel() throws Exception {
+        Series p = gen(5, 30, t -> t < 10 ? 1013.25 : (t < 20 ? 1013.25 - (t - 10) * 0.1 : 1012.25));
+        Map<String, Double> in = in("knownHeight", 8.0);
+        in.put("seaLevelHpa", 1013.25);
+        ExperimentResult r = ExperimentAnalyzer.analyze(def("height"), in, Arrays.asList(p));
+        assertTrue(r.getMessage(), r.isOk());
+        assertEquals("1013.3 hPa", line(r, "Local sea-level pressure (weather service)"));
+        assertEquals("0 m", line(r, "Estimated altitude at start"));       // sensor pressure equals sea-level pressure
+        assertEquals("8 m", line(r, "Estimated altitude at end"));
+    }
+
+    @Test
+    public void heightWithoutWeatherReferenceHasNoAltitudeLines() throws Exception {
+        Series p = gen(5, 30, t -> 1000.0);
+        ExperimentResult r = ExperimentAnalyzer.analyze(def("height"), new HashMap<>(), Arrays.asList(p));
+        for (ExperimentResult.Line l : r.getLines()) assertTrue(!l.label.contains("sea-level"));
+    }
+
     // ---------------- from a real RecordingSession ----------------
 
     @Test

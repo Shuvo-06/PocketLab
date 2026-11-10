@@ -1,5 +1,6 @@
 package com.pocketlab.app.ui.cloud;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,12 +11,15 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseUser;
 import com.pocketlab.app.PocketLabApp;
 import com.pocketlab.app.R;
+import com.pocketlab.app.LoginActivity;
 import com.pocketlab.app.cloud.AuthManager;
+import com.pocketlab.app.cloud.LiveStatus;
 import com.pocketlab.app.cloud.NetworkState;
 import com.pocketlab.app.cloud.SyncMode;
 import com.pocketlab.app.cloud.SyncPrefs;
@@ -43,6 +47,8 @@ public class CloudFragment extends Fragment {
     private final DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
     private int tick;
     private int total, unsynced;
+    @Nullable private LiveStatus.Handle liveHandle;
+    @Nullable private LiveStatus.Status live;
 
     private final Runnable ticker = new Runnable() {
         @Override
@@ -70,16 +76,6 @@ public class CloudFragment extends Fragment {
         binding.switchAuto.setChecked(prefs.isAutoSync());
         binding.checkWifi.setChecked(prefs.isWifiOnly());
 
-        binding.btnSignIn.setOnClickListener(v -> authenticate(false));
-        binding.btnRegister.setOnClickListener(v -> authenticate(true));
-        binding.btnSignOut.setOnClickListener(v -> {
-            AuthManager.signOut(requireContext());
-            prefs.setAutoSync(false);
-            SyncScheduler.applyAutoSync(requireContext(), false, prefs.isWifiOnly());
-            binding.switchAuto.setChecked(false);
-            refresh();
-        });
-
         binding.btnBackup.setOnClickListener(v -> queue(SyncMode.BACKUP));
         binding.btnRestore.setOnClickListener(v -> queue(SyncMode.RESTORE));
         binding.switchAuto.setOnCheckedChangeListener((b, checked) -> {
@@ -99,38 +95,24 @@ public class CloudFragment extends Fragment {
         super.onStart();
         tick = 0;
         handler.post(ticker);
+        liveHandle = LiveStatus.listen(requireContext(), status -> {
+            live = status;
+            refresh();
+        });
     }
 
     @Override
     public void onStop() {
         super.onStop();
         handler.removeCallbacks(ticker);
+        if (liveHandle != null) {
+            liveHandle.stop();
+            liveHandle = null;
+        }
+        live = null;
     }
 
     // ------------------------------------------------------------------ actions
-
-    private void authenticate(boolean register) {
-        String email = String.valueOf(binding.emailEdit.getText());
-        String password = String.valueOf(binding.passwordEdit.getText());
-        setAuthBusy(true);
-        AuthManager.Callback done = error -> {
-            if (binding == null) return;
-            setAuthBusy(false);
-            if (error != null) {
-                Snackbar.make(binding.getRoot(), error, Snackbar.LENGTH_LONG).show();
-            } else {
-                binding.passwordEdit.setText("");
-                refresh();
-            }
-        };
-        if (register) AuthManager.register(requireContext(), email, password, done);
-        else AuthManager.signIn(requireContext(), email, password, done);
-    }
-
-    private void setAuthBusy(boolean busy) {
-        binding.btnSignIn.setEnabled(!busy);
-        binding.btnRegister.setEnabled(!busy);
-    }
 
     private void queue(SyncMode mode) {
         SyncScheduler.syncNow(requireContext(), mode);
@@ -168,16 +150,35 @@ public class CloudFragment extends Fragment {
 
         binding.onlineStatus.setText(online ? R.string.cloud_online : R.string.cloud_offline);
 
-        // Account card
+        // Account card: the login itself lives on the login page and in Profile
         if (!configured) {
             binding.accountStatus.setText(R.string.cloud_not_configured);
+            binding.btnAccount.setVisibility(View.GONE);
         } else if (!signedIn) {
             binding.accountStatus.setText(R.string.cloud_signed_out);
+            binding.btnAccount.setText(R.string.auth_sign_in);
+            binding.btnAccount.setVisibility(View.VISIBLE);
+            binding.btnAccount.setOnClickListener(v -> startActivity(new Intent(requireContext(), LoginActivity.class)
+                    .putExtra(LoginActivity.EXTRA_FORCE, true)));
         } else {
             binding.accountStatus.setText(getString(R.string.cloud_signed_in_as, user.getEmail()));
+            binding.btnAccount.setText(R.string.cloud_open_profile);
+            binding.btnAccount.setVisibility(View.VISIBLE);
+            binding.btnAccount.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigate(R.id.profileFragment));
         }
-        binding.signedOutGroup.setVisibility(configured && !signedIn ? View.VISIBLE : View.GONE);
-        binding.btnSignOut.setVisibility(signedIn ? View.VISIBLE : View.GONE);
+
+        // Live status card (Realtime Database listener)
+        if (!canLive(configured, signedIn)) {
+            binding.liveStatus.setText(R.string.live_needs_account);
+        } else if (live == null) {
+            binding.liveStatus.setText(R.string.live_none);
+        } else {
+            boolean mine = live.deviceId.equals(prefs.deviceId());
+            binding.liveStatus.setText(mine
+                    ? getString(R.string.live_this_device, live.sensor, live.samples)
+                    : getString(R.string.live_other_device, live.deviceName, live.sensor, live.samples));
+        }
 
         // Backup card
         boolean canSync = configured && signedIn;
@@ -209,6 +210,10 @@ public class CloudFragment extends Fragment {
                     dateFormat.format(new Date(prefs.getExperimentCheckAt())), prefs.getExperimentMessage()));
         }
         binding.experimentsStatus.setText(ex);
+    }
+
+    private static boolean canLive(boolean configured, boolean signedIn) {
+        return configured && signedIn;
     }
 
     @Override

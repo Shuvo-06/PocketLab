@@ -59,7 +59,8 @@ public final class ExperimentUpdater {
         }
     }
 
-    static String describe(IOException e) {
+    /** A short, user-readable reason for a network failure (shared with {@link WeatherApi} users). */
+    public static String describe(IOException e) {
         if (e instanceof UnknownHostException || e instanceof ConnectException) return "No internet connection.";
         if (e instanceof SocketTimeoutException) return "The server did not respond in time.";
         if (e instanceof HttpStatusException) {

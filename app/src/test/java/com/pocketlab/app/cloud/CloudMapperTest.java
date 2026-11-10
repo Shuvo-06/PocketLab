@@ -107,4 +107,28 @@ public class CloudMapperTest {
                 Collections.emptyList(), Collections.emptyList(), 1);
         assertNull(CloudMapper.restoredResultText(noStats));
     }
+
+    @Test
+    public void sampleChunksRoundTripAndDefaultForOldBackups() {
+        CloudSession withChunks = sample().withSampleChunks(7);
+        assertEquals(7, CloudMapper.fromMap(CloudMapper.toMap(withChunks)).sampleChunks);
+        Map<String, Object> old = CloudMapper.toMap(sample());
+        old.remove("sampleChunks");                                   // backups made before raw data was uploaded
+        assertEquals(0, CloudMapper.fromMap(old).sampleChunks);
+    }
+
+    @Test
+    public void absurdChunkCountsAreRejected() {
+        Map<String, Object> m = CloudMapper.toMap(sample());
+        m.put("sampleChunks", 5_000_000L);
+        rejects(m, "sampleChunks");
+        m.put("sampleChunks", -1L);
+        rejects(m, "sampleChunks");
+    }
+
+    @Test
+    public void restoredTextOmitsStatsWhenRawDataWasRestored() {
+        String withRaw = CloudMapper.restoredResultText(sample(), false);
+        assertEquals("Measured g: 9.8 m/s²", withRaw);
+    }
 }

@@ -198,6 +198,14 @@ public final class ExperimentAnalyzer {
         lines.add(line("Pressure change", p2 - p1, 2, "hPa"));
         lines.add(line("Estimated height change", dh, 1, "m"));
 
+        // Optional: a sea-level pressure from a weather service turns pressures into altitudes above sea level.
+        Double seaLevel = inputs.get("seaLevelHpa");
+        if (seaLevel != null) {
+            lines.add(line("Local sea-level pressure (weather service)", seaLevel, 1, "hPa"));
+            lines.add(line("Estimated altitude at start", PhysicsFormulas.altitudeFromPressure(p1, seaLevel), 0, "m"));
+            lines.add(line("Estimated altitude at end", PhysicsFormulas.altitudeFromPressure(p2, seaLevel), 0, "m"));
+        }
+
         StringBuilder v = new StringBuilder();
         Double known = inputs.get("knownHeight");
         if (known != null) {

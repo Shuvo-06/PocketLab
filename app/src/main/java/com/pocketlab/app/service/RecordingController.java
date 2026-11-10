@@ -7,13 +7,17 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import com.pocketlab.app.cloud.AuthManager;
 import com.pocketlab.app.data.SessionHeader;
 import com.pocketlab.app.data.SessionKind;
 import com.pocketlab.app.data.SessionRecorder;
 import com.pocketlab.app.data.SessionRepository;
 import com.pocketlab.app.data.SessionText;
 import com.pocketlab.app.recording.RecordingSession;
+import com.pocketlab.app.R;
+import com.pocketlab.app.graph.TimeFormat;
 import com.pocketlab.app.recording.RecordingState;
+import com.pocketlab.app.util.AppDestination;
 import com.pocketlab.app.sensor.SamplingRate;
 import com.pocketlab.app.sensor.SensorHub;
 import com.pocketlab.app.sensor.SensorSample;
@@ -84,7 +88,7 @@ public final class RecordingController implements SensorHub.Listener {
         long now = System.currentTimeMillis();
         SessionRecorder rec = repo.newRecorder(new SessionHeader(
                 SessionText.defaultName(selectedType.getDisplayName(), now, Locale.getDefault(), TimeZone.getDefault()),
-                now, selectedType, selectedRate, SessionKind.FREE, null, null));
+                now, selectedType, selectedRate, SessionKind.FREE, null, null, AuthManager.uid(app)));
         rec.begin();
         s.setSampleSink(rec);
         s.start();
@@ -164,6 +168,10 @@ public final class RecordingController implements SensorHub.Listener {
         if (recorder == null || session == null) return;
         if (session.hasSamples()) {
             recorder.finish(session, null);
+            Notifier.event(app, Notifier.ID_SAVED, app.getString(R.string.notif_saved_title),
+                    app.getString(R.string.notif_saved_text, session.getType().getDisplayName(),
+                            TimeFormat.format(session.getElapsedSeconds()), session.getTotalSamples()),
+                    AppDestination.HISTORY);
             SyncScheduler.onSessionSaved(app);   // backs it up soon if automatic backup is on
         } else {
             recorder.discard();

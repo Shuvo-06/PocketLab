@@ -40,4 +40,8 @@ public class SessionEntity {
     @Nullable public String cloudId;
     /** The {@code modifiedAt} value that was last uploaded or downloaded. */
     @ColumnInfo(defaultValue = "0") public long syncedAt;
+
+    // ---- accounts (database version 3) ----
+    /** Firebase uid of the account that owns this recording; "" = recorded without an account. */
+    @NonNull @ColumnInfo(defaultValue = "''") public String ownerUid = "";
 }

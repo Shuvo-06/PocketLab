@@ -9,6 +9,7 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.pocketlab.app.cloud.AuthManager;
 import com.pocketlab.app.data.AppDatabase;
 import com.pocketlab.app.data.MarkerEntity;
 import com.pocketlab.app.data.SampleEntity;
@@ -45,25 +46,26 @@ public final class SessionProvider extends ContentProvider {
         ProviderRoute route = ProviderRoute.parse(uri.getPathSegments());
         if (route == null) throw new IllegalArgumentException("Unknown URI: " + uri);
         AppDatabase db = AppDatabase.get(getContext());
+        String owner = AuthManager.uid(getContext());   // each account sees only its own recordings
 
         switch (route.type) {
             case SESSIONS: {
                 String[] cols = columns(projection, SessionContract.SESSION_COLUMNS);
                 MatrixCursor c = new MatrixCursor(cols);
-                for (SessionEntity s : db.sessionDao().search("")) addSession(c, cols, s);
+                for (SessionEntity s : db.sessionDao().search(owner, "")) addSession(c, cols, s);
                 return c;
             }
             case SESSION: {
                 String[] cols = columns(projection, SessionContract.SESSION_COLUMNS);
                 MatrixCursor c = new MatrixCursor(cols);
-                SessionEntity s = visible(db, route.sessionId);
+                SessionEntity s = visible(db, route.sessionId, owner);
                 if (s != null) addSession(c, cols, s);
                 return c;
             }
             case SAMPLES: {
                 String[] cols = columns(projection, SessionContract.SAMPLE_COLUMNS);
                 MatrixCursor c = new MatrixCursor(cols);
-                if (visible(db, route.sessionId) == null) return c;
+                if (visible(db, route.sessionId, owner) == null) return c;
                 int limit = ProviderRoute.parseLimit(uri.getQueryParameter("limit"), DEFAULT_LIMIT, MAX_LIMIT);
                 long after = ProviderRoute.parseAfter(uri.getQueryParameter("after"));
                 List<SampleEntity> rows = db.sampleDao().page(route.sessionId, after, limit);
@@ -76,7 +78,7 @@ public final class SessionProvider extends ContentProvider {
             default: {   // MARKERS
                 String[] cols = columns(projection, SessionContract.MARKER_COLUMNS);
                 MatrixCursor c = new MatrixCursor(cols);
-                if (visible(db, route.sessionId) == null) return c;
+                if (visible(db, route.sessionId, owner) == null) return c;
                 for (MarkerEntity e : db.markerDao().forSession(route.sessionId)) {
                     MatrixCursor.RowBuilder b = c.newRow();
                     for (String col : cols) b.add(markerValue(col, e));
@@ -119,9 +121,9 @@ public final class SessionProvider extends ContentProvider {
     // ------------------------------------------------------------------ helpers
 
     @Nullable
-    private static SessionEntity visible(AppDatabase db, long id) {
+    private static SessionEntity visible(AppDatabase db, long id, String owner) {
         SessionEntity s = db.sessionDao().get(id);
-        return s != null && s.complete && !s.trashed ? s : null;
+        return s != null && s.complete && !s.trashed && s.ownerUid.equals(owner) ? s : null;
     }
 
     private static String[] columns(@Nullable String[] projection, String[] all) {

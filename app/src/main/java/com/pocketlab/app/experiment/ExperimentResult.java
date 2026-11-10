@@ -35,6 +35,11 @@ public final class ExperimentResult {
         return new ExperimentResult(true, interpretation, lines);
     }
 
+    /** The same result with an extra paragraph (for example "weather reference unavailable") appended to the message. */
+    public ExperimentResult withNote(String note) {
+        return new ExperimentResult(ok, message + "\n\n" + note, new ArrayList<>(lines));
+    }
+
     /** Labelled values followed by the interpretation, as plain text (stored in history). */
     public String toPlainText() {
         StringBuilder sb = new StringBuilder();

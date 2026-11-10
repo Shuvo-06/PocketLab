@@ -15,8 +15,13 @@ public final class SessionImporter {
 
     /** @return the id of the new session. Call from a background thread. */
     public static long save(ImportedSession s, SessionStore store) throws Exception {
+        return save(s, store, "");
+    }
+
+    /** @param ownerUid the account the imported recording belongs to ("" = no account) */
+    public static long save(ImportedSession s, SessionStore store, String ownerUid) throws Exception {
         long id = store.insertSession(new SessionHeader(s.name, s.createdAtMillis, s.sensor, s.rate,
-                SessionKind.IMPORTED, s.experimentId, s.experimentTitle));
+                SessionKind.IMPORTED, s.experimentId, s.experimentTitle, ownerUid));
         try {
             for (int from = 0; from < s.count; from += CHUNK) {
                 int to = Math.min(s.count, from + CHUNK);

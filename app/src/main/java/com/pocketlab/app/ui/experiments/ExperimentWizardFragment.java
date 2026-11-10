@@ -234,8 +234,10 @@ public class ExperimentWizardFragment extends Fragment {
     private void updateRecord() {
         RecordingSession s = vm.getSession();
         boolean recording = vm.isRecording();
+        boolean analyzing = vm.isAnalyzing();
         binding.btnRecord.setText(recording ? R.string.wizard_stop : R.string.wizard_start);
-        binding.btnBack.setEnabled(!recording);
+        binding.btnRecord.setEnabled(!analyzing);
+        binding.btnBack.setEnabled(!recording && !analyzing);
 
         if (s == null) {
             boundSession = null;
@@ -261,8 +263,8 @@ public class ExperimentWizardFragment extends Fragment {
             binding.graph.resetView();
         }
         binding.elapsed.setText(TimeFormat.format(s.getElapsedSeconds()));
-        binding.recordStatus.setText(recording
-                ? getString(R.string.wizard_recording, def.getMaxSeconds())
+        binding.recordStatus.setText(analyzing ? getString(R.string.wizard_analysing)
+                : recording ? getString(R.string.wizard_recording, def.getMaxSeconds())
                 : getString(R.string.wizard_not_recording));
         binding.graph.invalidate();
     }

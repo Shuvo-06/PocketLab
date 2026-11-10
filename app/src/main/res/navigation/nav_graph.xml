@@ -42,6 +42,12 @@
         tools:layout="@layout/fragment_session_detail" />
 
     <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.pocketlab.app.ui.profile.ProfileFragment"
+        android:label="@string/action_profile"
+        tools:layout="@layout/fragment_profile" />
+
+    <fragment
         android:id="@+id/cloudFragment"
         android:name="com.pocketlab.app.ui.cloud.CloudFragment"
         android:label="@string/action_cloud"

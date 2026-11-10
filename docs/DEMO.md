@@ -4,22 +4,23 @@
 
 | Min | Show | Say / point out |
 |---|---|---|
-| 0:00 | **Sensors** tab | live values, units, measured Hz vs requested, missing sensor handled gracefully |
-| 1:30 | **Recorder** | pick Accelerometer / Game, Start, shake, add a marker, pinch-zoom, Pause/Resume, Stop → summary |
-| 3:00 | Press Home, lock the screen, come back | foreground service + notification + Stop; recording survived (mention wake lock and battery rule) |
+| 0:00 | **Login page** → sign in (or create an account) | Firebase Authentication, per-account data, guest mode |
+| 0:30 | **Sensors** tab | live values, units, measured Hz vs requested, missing sensor handled gracefully |
+| 1:30 | **Recorder** | pick **Gyroscope** (any sensor works), Start, move the phone, add a marker, pinch-zoom, Pause/Resume, Stop → summary |
+| 3:00 | Press Home, lock the screen, tap the notification | foreground service + notification + Stop; tapping returns to the app (Intent extra, deep link); "Recording saved" notification → History |
 | 4:00 | **Experiments → Simple pendulum** | JSON-driven wizard, input validation, run, g with uncertainty and % error |
 | 5:30 | **History** | search, open a session (graph restored from the database), rename, swipe-delete → Undo |
 | 6:30 | **Share → PDF report**, then CSV | FileProvider + share sheet; open the PDF |
-| 7:15 | **About → Provider demo** | ContentResolver queries on the custom read-only provider |
-| 8:00 | **Cloud** screen | offline state, sign in, Back up now, auto backup with WorkManager, restore on a second device |
+| 7:15 | **Profile → Provider demo** | ContentResolver queries on the custom read-only provider |
+| 8:00 | **Cloud** screen and **Profile** | live status from a second phone (Realtime Database), Back up now, WorkManager auto backup, data and graphs restored on a second device, notification test |
 | 9:00 | Architecture slide | pure-Java core + tests, interfaces at the Android boundary |
 
 ## Screenshots to take (for the report)
 
-1. Sensors dashboard (live values) · 2. Recorder mid-recording with graph + markers · 3. Recording notification
+1. Login page · 1b. Profile · 1c. Sensors dashboard (live values) · 2. Recorder mid-recording with graph + markers · 3. Recording notification
 (shade) · 4. Experiment wizard: instruction, input, record, results · 5. History list with search · 6. Session detail ·
 7. Share sheet · 8. PDF report (page 1) · 9. Provider demo dialog · 10. Cloud screen (signed in) · 11. Firestore console
-showing a backup · 12. Dark mode.
+showing a backup · 12. Dark mode · 13. Notification shade with the "Recording saved" and "Backup finished" notifications · 14. Cloud screen with the live status · 15. Realtime Database console showing `samples/` and `status/`.
 
 ## Demonstration video (about 3 minutes)
 

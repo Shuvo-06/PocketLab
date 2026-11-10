@@ -9,6 +9,8 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 
 import com.pocketlab.app.PocketLabApp;
+import com.pocketlab.app.analysis.Series;
+import com.pocketlab.app.cloud.AuthManager;
 import com.pocketlab.app.data.SessionHeader;
 import com.pocketlab.app.data.SessionKind;
 import com.pocketlab.app.data.SessionRecorder;
@@ -16,12 +18,15 @@ import com.pocketlab.app.data.SessionText;
 import com.pocketlab.app.experiment.ExperimentAnalyzer;
 import com.pocketlab.app.experiment.ExperimentDefinition;
 import com.pocketlab.app.experiment.ExperimentResult;
+import com.pocketlab.app.net.ExperimentUpdater;
+import com.pocketlab.app.net.WeatherApi;
 import com.pocketlab.app.recording.RecordingSession;
 import com.pocketlab.app.recording.RecordingState;
 import com.pocketlab.app.sensor.SensorHub;
 import com.pocketlab.app.work.SyncScheduler;
 import com.pocketlab.app.sensor.SensorSample;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +34,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * State of the experiment wizard. Activity-scoped so a run survives rotation and tab switches.
@@ -50,6 +57,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
 
     private final SensorHub hub;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Executor background = Executors.newSingleThreadExecutor();
 
     @Nullable private ExperimentDefinition def;
     private List<Page> pages = Collections.emptyList();
@@ -62,6 +70,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
     @Nullable private SessionRecorder recorder;
     private boolean interrupted;
     private boolean stopPosted;
+    private boolean analyzing;
 
     public ExperimentViewModel(@NonNull Application application) {
         super(application);
@@ -104,6 +113,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
         pageIndex = 0;
         interrupted = false;
         stopPosted = false;
+        analyzing = false;
     }
 
     // ---- navigation ----
@@ -135,6 +145,11 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
                 errors.put(spec.key, e.getMessage());
             }
         }
+        // The weather lookup needs a complete position.
+        if (inputs.containsKey("latitude") != inputs.containsKey("longitude")) {
+            errors.put(inputs.containsKey("latitude") ? "longitude" : "latitude",
+                    "Enter both coordinates, or leave both empty");
+        }
         return errors;
     }
 
@@ -147,12 +162,15 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
     @Nullable public RecordingSession getSession() { return session; }
     @Nullable public ExperimentResult getResult() { return result; }
 
+    /** True while the finished run is being analysed (this can include a short web request). */
+    public boolean isAnalyzing() { return analyzing; }
+
     public boolean isRecording() {
         return session != null && session.getState() == RecordingState.RECORDING;
     }
 
     public boolean startRun() {
-        if (def == null || isRecording()) return false;
+        if (def == null || isRecording() || analyzing) return false;
         // The whole run is analysed from this buffer, so it must hold all of it
         // (allowing up to ~250 samples/s in case the device delivers faster than requested).
         int capacity = Math.max(6000, (int) Math.ceil(def.getMaxSeconds() * 250));
@@ -164,7 +182,7 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
                 new SessionHeader(SessionText.defaultName(def.getTitle(), now,
                         Locale.getDefault(), TimeZone.getDefault()),
                         now, def.getSensor(), def.getRate(), SessionKind.EXPERIMENT,
-                        def.getId(), def.getTitle()));
+                        def.getId(), def.getTitle(), AuthManager.uid(getApplication())));
         rec.begin();
         s.setSampleSink(rec);
         s.start();
@@ -176,21 +194,61 @@ public class ExperimentViewModel extends AndroidViewModel implements SensorHub.L
         return true;
     }
 
-    /** Stops recording, analyses the data and moves to the results page. */
+    /**
+     * Stops recording, analyses the data and moves to the results page. If the user entered coordinates,
+     * the analysis first asks the Open-Meteo REST API for today's sea-level pressure (on a background
+     * thread, so the screen never freezes); if that fails the result is still produced, with a note.
+     */
     public void finishRun() {
         if (def == null || session == null || !isRecording()) return;
-        session.stop();
+        final ExperimentDefinition d = def;
+        final RecordingSession s = session;
+        s.stop();
         cancelSubscription();
-        result = ExperimentAnalyzer.analyze(def, inputs, ExperimentAnalyzer.seriesFrom(session));
-        if (recorder != null) {
+        final SessionRecorder rec = recorder;
+        recorder = null;
+        final Map<String, Double> in = new HashMap<>(inputs);
+        final List<Series> axes = ExperimentAnalyzer.seriesFrom(s);
+        analyzing = true;
+
+        final Double lat = in.get("latitude");
+        final Double lon = in.get("longitude");
+        if (lat == null || lon == null) {
+            complete(d, s, rec, in, axes, null);
+            return;
+        }
+        background.execute(() -> {
+            String note = null;
+            try {
+                in.put("seaLevelHpa", new WeatherApi().fetchSeaLevelPressure(lat, lon));
+            } catch (IOException e) {
+                note = "Weather reference unavailable: " + ExperimentUpdater.describe(e);
+            } catch (RuntimeException e) {
+                note = "Weather reference unavailable.";
+            }
+            final String finalNote = note;
+            handler.post(() -> complete(d, s, rec, in, axes, finalNote));
+        });
+    }
+
+    private void complete(ExperimentDefinition d, RecordingSession s, @Nullable SessionRecorder rec,
+                          Map<String, Double> in, List<Series> axes, @Nullable String note) {
+        analyzing = false;
+        if (session != s) {            // the user left or started over while we were waiting
+            if (rec != null) rec.discard();
+            return;
+        }
+        ExperimentResult r = ExperimentAnalyzer.analyze(d, in, axes);
+        if (note != null && r.isOk()) r = r.withNote(note);
+        result = r;
+        if (rec != null) {
             // Only successful runs are kept; a failed attempt would just clutter the history.
-            if (result.isOk()) {
-                recorder.finish(session, result.toPlainText());
+            if (r.isOk()) {
+                rec.finish(s, r.toPlainText());
                 SyncScheduler.onSessionSaved(getApplication());
             } else {
-                recorder.discard();
+                rec.discard();
             }
-            recorder = null;
         }
         pageIndex = pages.size() - 1;
     }

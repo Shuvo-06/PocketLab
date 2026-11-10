@@ -8,7 +8,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -30,6 +29,7 @@ import com.pocketlab.app.recording.RecordingState;
 import com.pocketlab.app.recording.RecordingSummary;
 import com.pocketlab.app.sensor.SamplingRate;
 import com.pocketlab.app.sensor.SensorType;
+import com.pocketlab.app.ui.widget.NoFilterArrayAdapter;
 import com.pocketlab.app.sensor.ValueFormatter;
 
 import java.util.ArrayList;
@@ -86,23 +86,37 @@ public class RecorderFragment extends Fragment {
     }
 
     private void setUpDropdowns() {
+        // Both dropdowns use an adapter that never filters, and a click is mapped by the text of the
+        // chosen item (not by its position), so the sensor picked is always the sensor recorded.
         List<String> sensorNames = new ArrayList<>();
         for (SensorType t : available) sensorNames.add(t.getDisplayName());
-        binding.sensorDropdown.setAdapter(new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, sensorNames));
+        binding.sensorDropdown.setAdapter(new NoFilterArrayAdapter(requireContext(), sensorNames));
         SensorType selected = vm.getSelectedType();
         if (selected != null) binding.sensorDropdown.setText(selected.getDisplayName(), false);
-        binding.sensorDropdown.setOnItemClickListener((p, v, pos, id) ->
-                vm.setSelectedType(available.get(pos)));
+        binding.sensorDropdown.setOnItemClickListener((parent, v, pos, id) -> {
+            String chosen = String.valueOf(parent.getItemAtPosition(pos));
+            for (SensorType t : available) {
+                if (t.getDisplayName().equals(chosen)) {
+                    vm.setSelectedType(t);
+                    break;
+                }
+            }
+        });
 
         SamplingRate[] rates = SamplingRate.values();
         List<String> rateNames = new ArrayList<>();
         for (SamplingRate r : rates) rateNames.add(rateLabel(r));
-        binding.rateDropdown.setAdapter(new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, rateNames));
+        binding.rateDropdown.setAdapter(new NoFilterArrayAdapter(requireContext(), rateNames));
         binding.rateDropdown.setText(rateLabel(vm.getSelectedRate()), false);
-        binding.rateDropdown.setOnItemClickListener((p, v, pos, id) ->
-                vm.setSelectedRate(rates[pos]));
+        binding.rateDropdown.setOnItemClickListener((parent, v, pos, id) -> {
+            String chosen = String.valueOf(parent.getItemAtPosition(pos));
+            for (SamplingRate r : rates) {
+                if (rateLabel(r).equals(chosen)) {
+                    vm.setSelectedRate(r);
+                    break;
+                }
+            }
+        });
     }
 
     private String rateLabel(SamplingRate r) {

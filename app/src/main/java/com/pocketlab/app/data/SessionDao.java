@@ -15,10 +15,13 @@ public interface SessionDao {
     @Insert
     long insert(SessionEntity session);
 
-    /** Finished, not deleted sessions whose name contains {@code query} (already LIKE-escaped), newest first. */
-    @Query("SELECT * FROM sessions WHERE complete = 1 AND trashed = 0 "
+    /**
+     * Finished, not deleted sessions of one account ("" = no account) whose name contains {@code query}
+     * (already LIKE-escaped), newest first.
+     */
+    @Query("SELECT * FROM sessions WHERE complete = 1 AND trashed = 0 AND ownerUid = :owner "
             + "AND name LIKE '%' || :query || '%' ESCAPE '\\' ORDER BY createdAt DESC")
-    List<SessionEntity> search(String query);
+    List<SessionEntity> search(String owner, String query);
 
     @Query("SELECT * FROM sessions WHERE id = :id")
     SessionEntity get(long id);
@@ -51,9 +54,9 @@ public interface SessionDao {
 
     // ---- cloud sync ----
 
-    /** Finished, not deleted sessions: what can be backed up. */
-    @Query("SELECT * FROM sessions WHERE complete = 1 AND trashed = 0")
-    List<SessionEntity> syncable();
+    /** Finished, not deleted sessions of one account: what can be backed up. */
+    @Query("SELECT * FROM sessions WHERE complete = 1 AND trashed = 0 AND ownerUid = :owner")
+    List<SessionEntity> syncable(String owner);
 
     @Query("UPDATE sessions SET cloudId = :cloudId, syncedAt = :syncedAt WHERE id = :id")
     void markSynced(long id, String cloudId, long syncedAt);
@@ -62,18 +65,22 @@ public interface SessionDao {
     @Query("UPDATE sessions SET name = :name, modifiedAt = :time, syncedAt = :time WHERE id = :id")
     void applyRemote(long id, String name, long time);
 
-    /** Forgets all backup links (used when a different account signs in). */
-    @Query("UPDATE sessions SET cloudId = NULL, syncedAt = 0")
-    void clearSyncState();
+    /**
+     * Gives the recordings made without an account to the account that just signed in. Their backup
+     * state is reset so they are uploaded to that account.
+     */
+    @Query("UPDATE sessions SET ownerUid = :uid, cloudId = NULL, syncedAt = 0, modifiedAt = " + NOW_MS
+            + " WHERE ownerUid = '' AND complete = 1")
+    int claimGuestSessions(String uid);
 
-    @Query("SELECT COUNT(*) FROM sessions WHERE complete = 1 AND trashed = 0")
-    int countSyncable();
+    @Query("SELECT COUNT(*) FROM sessions WHERE complete = 1 AND trashed = 0 AND ownerUid = :owner")
+    int countSyncable(String owner);
 
-    @Query("SELECT COUNT(*) FROM sessions WHERE complete = 1 AND trashed = 0 "
+    @Query("SELECT COUNT(*) FROM sessions WHERE complete = 1 AND trashed = 0 AND ownerUid = :owner "
             + "AND (cloudId IS NULL OR modifiedAt > syncedAt)")
-    int countUnsynced();
+    int countUnsynced(String owner);
 
-    /** Removes unfinished and trashed sessions; returns how many were removed.
+    /** Removes unfinished and trashed sessions; returns how many were removed. */
     @Query("DELETE FROM sessions WHERE complete = 0 OR trashed = 1")
     int purge();
 }

@@ -22,13 +22,20 @@ public final class SessionRepository {
     /** Detail screens load at most this many samples; longer recordings are thinned evenly. */
     public static final int MAX_DETAIL_SAMPLES = 100_000;
 
+    /** Tells the repository whose recordings to show: the signed-in account's uid, or "" for none. */
+    public interface OwnerProvider {
+        String currentOwner();
+    }
+
     private final AppDatabase db;
     private final Executor io;
+    private final OwnerProvider owner;
     private final Handler main = new Handler(Looper.getMainLooper());
 
-    public SessionRepository(AppDatabase db, Executor io) {
+    public SessionRepository(AppDatabase db, Executor io, OwnerProvider owner) {
         this.db = db;
         this.io = io;
+        this.owner = owner;
     }
 
     /** A recorder that saves one recording into this database (its own writer thread). */
@@ -48,10 +55,11 @@ public final class SessionRepository {
     }
 
     public void loadSessions(String query, Callback<List<SessionEntity>> callback) {
+        final String who = owner.currentOwner();
         io.execute(() -> {
             List<SessionEntity> result;
             try {
-                result = db.sessionDao().search(SessionText.escapeLike(query));
+                result = db.sessionDao().search(who, SessionText.escapeLike(query));
             } catch (Exception e) {
                 result = new ArrayList<>();
             }
@@ -82,15 +90,30 @@ public final class SessionRepository {
 
     /** Delivers {total backed-up-able sessions, sessions not yet backed up}. */
     public void loadSyncCounts(Callback<int[]> callback) {
+        final String who = owner.currentOwner();
         io.execute(() -> {
             int[] counts = new int[]{0, 0};
             try {
-                counts[0] = db.sessionDao().countSyncable();
-                counts[1] = db.sessionDao().countUnsynced();
+                counts[0] = db.sessionDao().countSyncable(who);
+                counts[1] = db.sessionDao().countUnsynced(who);
             } catch (Exception ignored) {
                 // Show zeros rather than crash.
             }
             main.post(() -> callback.onResult(counts));
+        });
+    }
+
+    /** After signing in: recordings made without an account now belong to {@code uid}. Delivers how many. */
+    public void claimGuestSessions(String uid, Callback<Integer> callback) {
+        io.execute(() -> {
+            int n = 0;
+            try {
+                n = db.sessionDao().claimGuestSessions(uid);
+            } catch (Exception ignored) {
+                // They simply stay unowned; claiming is tried again at the next sign-in.
+            }
+            final int claimed = n;
+            main.post(() -> callback.onResult(claimed));
         });
     }
 

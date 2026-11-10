@@ -3,10 +3,12 @@ package com.pocketlab.app.cloud;
 import com.pocketlab.app.analysis.RunningStats;
 import com.pocketlab.app.data.AppDatabase;
 import com.pocketlab.app.data.MarkerEntity;
+import com.pocketlab.app.data.SampleEntity;
 import com.pocketlab.app.data.SessionEntity;
 import com.pocketlab.app.data.SessionKind;
 import com.pocketlab.app.export.ExportSummary;
 import com.pocketlab.app.export.RoomSampleSource;
+import com.pocketlab.app.export.SampleSource;
 import com.pocketlab.app.graph.Marker;
 import com.pocketlab.app.sensor.SensorType;
 
@@ -14,19 +16,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The device's recordings, as seen by the sync engine. Call from a background thread. */
+/** The signed-in account's recordings on this device, as seen by the sync engine. Background threads only. */
 final class RoomLocalStore implements SyncEngine.LocalStore {
 
-    private final AppDatabase db;
+    private static final int INSERT_CHUNK = 1000;
 
-    RoomLocalStore(AppDatabase db) {
+    private final AppDatabase db;
+    private final String owner;
+
+    RoomLocalStore(AppDatabase db, String owner) {
         this.db = db;
+        this.owner = owner;
     }
 
     @Override
     public List<LocalSession> listSyncable() {
         List<LocalSession> out = new ArrayList<>();
-        for (SessionEntity e : db.sessionDao().syncable()) {
+        for (SessionEntity e : db.sessionDao().syncable(owner)) {
             out.add(new LocalSession(e.id, e.cloudId, e.modifiedAt, e.syncedAt));
         }
         return out;
@@ -35,7 +41,7 @@ final class RoomLocalStore implements SyncEngine.LocalStore {
     @Override
     public CloudSession snapshot(long id) {
         SessionEntity e = db.sessionDao().get(id);
-        if (e == null || e.trashed || !e.complete) return null;
+        if (e == null || e.trashed || !e.complete || !e.ownerUid.equals(owner)) return null;
         SensorType type = SensorType.valueOf(e.sensorType);
 
         List<CloudSession.Stat> stats = new ArrayList<>();
@@ -57,6 +63,11 @@ final class RoomLocalStore implements SyncEngine.LocalStore {
     }
 
     @Override
+    public SampleSource openSamples(long localId) {
+        return new RoomSampleSource(db, localId);
+    }
+
+    @Override
     public void markSynced(long localId, String cloudId, long syncedAt) {
         db.sessionDao().markSynced(localId, cloudId, syncedAt);
     }
@@ -67,7 +78,7 @@ final class RoomLocalStore implements SyncEngine.LocalStore {
     }
 
     @Override
-    public void restore(String cloudId, CloudSession remote) {
+    public void restore(String cloudId, CloudSession remote, RawSamples raw) {
         SessionEntity e = new SessionEntity();
         e.name = remote.name;
         e.createdAt = remote.createdAtMillis;
@@ -77,16 +88,19 @@ final class RoomLocalStore implements SyncEngine.LocalStore {
         e.experimentId = remote.experimentId;
         e.experimentTitle = remote.experimentTitle;
         e.durationSeconds = remote.durationSeconds;
-        e.sampleCount = remote.sampleCount;
-        e.resultText = CloudMapper.restoredResultText(remote);
+        e.sampleCount = raw != null ? raw.count : remote.sampleCount;
+        // With the raw data restored the detail screen computes its own statistics; without it, show the backed-up ones.
+        e.resultText = CloudMapper.restoredResultText(remote, raw == null);
         e.complete = true;
         e.cloudId = cloudId;
         e.modifiedAt = remote.modifiedAt;
         e.syncedAt = remote.modifiedAt;
+        e.ownerUid = owner;
 
-        List<MarkerEntity> markers = new ArrayList<>();
+        // Session, markers and samples are stored together or not at all.
         db.runInTransaction(() -> {
             long id = db.sessionDao().insert(e);
+            List<MarkerEntity> markers = new ArrayList<>();
             for (Marker m : remote.markers) {
                 MarkerEntity row = new MarkerEntity();
                 row.sessionId = id;
@@ -95,6 +109,22 @@ final class RoomLocalStore implements SyncEngine.LocalStore {
                 markers.add(row);
             }
             if (!markers.isEmpty()) db.markerDao().insertAll(markers);
+            if (raw != null) {
+                for (int from = 0; from < raw.count; from += INSERT_CHUNK) {
+                    int to = Math.min(raw.count, from + INSERT_CHUNK);
+                    List<SampleEntity> rows = new ArrayList<>(to - from);
+                    for (int i = from; i < to; i++) {
+                        SampleEntity s = new SampleEntity();
+                        s.sessionId = id;
+                        s.timeSeconds = raw.times[i];
+                        s.v0 = raw.values[0][i];
+                        s.v1 = raw.values[1][i];
+                        s.v2 = raw.values[2][i];
+                        rows.add(s);
+                    }
+                    db.sampleDao().insertAll(rows);
+                }
+            }
         });
     }
 }

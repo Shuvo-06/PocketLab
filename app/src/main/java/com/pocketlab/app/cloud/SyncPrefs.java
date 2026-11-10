@@ -3,7 +3,9 @@ package com.pocketlab.app.cloud;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-/** Small settings and status for cloud sync, kept in SharedPreferences. */
+import java.util.UUID;
+
+/** Small settings and status for accounts, cloud sync and notifications, kept in SharedPreferences. */
 public final class SyncPrefs {
 
     private final SharedPreferences p;
@@ -12,16 +14,37 @@ public final class SyncPrefs {
         p = context.getApplicationContext().getSharedPreferences("cloud", Context.MODE_PRIVATE);
     }
 
-    public boolean isAutoSync() { return p.getBoolean("autoSync", false); }
+    // ---- account mode ----
+    /** True if the user chose "continue without an account" on the login page. */
+    public boolean isGuest() { return p.getBoolean("guest", false); }
+    public void setGuest(boolean v) { p.edit().putBoolean("guest", v).apply(); }
+
+    // ---- sync settings (on by default: that is what makes data follow the user to other devices) ----
+    public boolean isAutoSync() { return p.getBoolean("autoSync", true); }
     public void setAutoSync(boolean v) { p.edit().putBoolean("autoSync", v).apply(); }
 
-    public boolean isWifiOnly() { return p.getBoolean("wifiOnly", true); }
+    public boolean isWifiOnly() { return p.getBoolean("wifiOnly", false); }
     public void setWifiOnly(boolean v) { p.edit().putBoolean("wifiOnly", v).apply(); }
 
-    /** The account the local sync links belong to. */
-    public String getLastUid() { return p.getString("lastUid", null); }
-    public void setLastUid(String uid) { p.edit().putString("lastUid", uid).apply(); }
+    // ---- notifications ----
+    /** Notifications about saved recordings, backups and experiment updates (not the recording notification). */
+    public boolean isEventNotifications() { return p.getBoolean("events", true); }
+    public void setEventNotifications(boolean v) { p.edit().putBoolean("events", v).apply(); }
 
+    public boolean wasNotificationPermissionAsked() { return p.getBoolean("askedNotifications", false); }
+    public void setNotificationPermissionAsked() { p.edit().putBoolean("askedNotifications", true).apply(); }
+
+    /** A random id for this installation, used to tell "this device" from "another device" in live status. */
+    public String deviceId() {
+        String id = p.getString("deviceId", null);
+        if (id == null) {
+            id = UUID.randomUUID().toString();
+            p.edit().putString("deviceId", id).apply();
+        }
+        return id;
+    }
+
+    // ---- sync status ----
     public boolean isRunning() { return p.getBoolean("running", false); }
     public void setRunning(boolean v) { p.edit().putBoolean("running", v).apply(); }
 
@@ -38,7 +61,7 @@ public final class SyncPrefs {
         p.edit().putString("lastMessage", message).putBoolean("lastOk", false).apply();
     }
 
-    // experiment definitions
+    // ---- experiment definitions ----
     public long getExperimentCheckAt() { return p.getLong("expCheckAt", 0); }
     public String getExperimentMessage() { return p.getString("expMessage", null); }
 

@@ -17,6 +17,8 @@ import java.util.Map;
 public final class CloudMapper {
 
     public static final int SCHEMA = 1;
+    /** Upper bound that keeps a hostile document from making us request millions of chunks. */
+    public static final int MAX_CHUNKS = 5000;
     private static final int MAX_NAME = 80, MAX_LABEL = 40, MAX_RESULT = 20_000, MAX_MARKERS = 1000, MAX_STATS = 3;
 
     private CloudMapper() {}
@@ -35,6 +37,7 @@ public final class CloudMapper {
         m.put("sampleCount", s.sampleCount);
         m.put("resultText", s.resultText);
         m.put("modifiedAt", s.modifiedAt);
+        m.put("sampleChunks", (long) s.sampleChunks);
         List<Map<String, Object>> markers = new ArrayList<>();
         for (Marker k : s.markers) {
             Map<String, Object> x = new LinkedHashMap<>();
@@ -83,6 +86,9 @@ public final class CloudMapper {
         long created = (long) number(m, "createdAt", true);
         long modified = (long) number(m, "modifiedAt", true);
         if (duration < 0 || samples < 0 || modified < 0) throw new IllegalArgumentException("negative value");
+        double chunksValue = number(m, "sampleChunks", false);       // absent in older backups
+        int chunks = Double.isNaN(chunksValue) ? 0 : (int) chunksValue;
+        if (chunks < 0 || chunks > MAX_CHUNKS) throw new IllegalArgumentException("bad sampleChunks");
 
         List<Marker> markers = new ArrayList<>();
         for (Object o : list(m, "markers", MAX_MARKERS)) {
@@ -99,11 +105,19 @@ public final class CloudMapper {
         String result = clip(string(m, "resultText", false), MAX_RESULT);
         return new CloudSession(name.trim(), created, sensor, rate, string(m, "kind", false) == null ? "FREE" : string(m, "kind", false),
                 clip(string(m, "experimentId", false), 100), clip(string(m, "experimentTitle", false), 100),
-                duration, samples, result, markers, stats, modified);
+                duration, samples, result, markers, stats, modified, chunks);
     }
 
     /** The saved result text plus the backed-up statistics, for a recording restored without raw data. */
     public static String restoredResultText(CloudSession s) {
+        return restoredResultText(s, true);
+    }
+
+    /**
+     * @param includeStats false when the raw samples were restored too: the detail screen then computes
+     *                     the statistics itself and a second copy would only be noise
+     */
+    public static String restoredResultText(CloudSession s, boolean includeStats) {
         StringBuilder sb = new StringBuilder();
         if (s.resultText != null && !s.resultText.trim().isEmpty()) sb.append(s.resultText.trim());
         StringBuilder stats = new StringBuilder();
@@ -114,7 +128,7 @@ public final class CloudMapper {
                     .append(" · σ ").append(Double.isNaN(t.stdDev) ? "–" : fmt(t.stdDev))
                     .append(" · min ").append(fmt(t.min)).append(" · max ").append(fmt(t.max)).append(' ').append(unit);
         }
-        if (stats.length() > 0) {
+        if (includeStats && stats.length() > 0) {
             if (sb.length() > 0) sb.append("\n\n");
             sb.append("Summary from the cloud backup (raw measurements stay on the original device):").append(stats);
         }

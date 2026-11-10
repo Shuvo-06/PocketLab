@@ -61,7 +61,11 @@ Each side stores `syncedAt` (the change time last exchanged).
 | no | yes | apply the cloud's name |
 | yes | yes | **conflict**: the newer `modifiedAt` wins (tie → local) |
 
-Never backed up, or cloud copy missing → upload. Cloud documents unknown locally → restore (summary only).
+Never backed up, or cloud copy missing → **full upload**: raw samples first (Realtime Database, 500 per node), then the
+summary (Firestore) with the number of chunks, so a summary always refers to complete data; failures delete what was
+uploaded. A later rename uploads only the summary (samples never change). Cloud documents unknown locally → restore: the
+samples are downloaded **before** anything is stored locally and then inserted with the session in one transaction (up to
+500,000 samples; larger recordings restore as a summary only).
 Progress is saved per recording, so a failure halfway is simply continued by the next run.
 Clock differences between devices can affect "newer"; this is accepted for summary metadata.
 
@@ -71,3 +75,11 @@ Warn once at ≤ 15 %, stop and save at ≤ 5 %, never act while charging, re-ar
 ## Network
 Conditional GET with `If-None-Match`; the downloaded file is parsed with the app's own parser **before** it
 replaces the cache. Only `https://` is accepted, 10 s timeouts, 1 MB limit.
+
+## Altitude above sea level (Relative height, optional)
+With a sea-level pressure `p0` from the weather API: `h = 44330 · (1 − (p / p0)^0.190295)` for the start and end pressures.
+`p0` is validated (850–1090 hPa) before use; if the call fails the result simply omits the altitude lines.
+
+## Live status
+`status/{uid}` is rewritten every 5 s while recording; `onDisconnect().removeValue()` is registered with it so the server
+removes the entry if the phone disappears.

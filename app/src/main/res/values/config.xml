@@ -6,4 +6,7 @@
         Example: https://raw.githubusercontent.com/YOUR-NAME/pocketlab-config/main/experiments.json
     -->
     <string name="experiments_url" translatable="false"></string>
+
+    <!-- Where the "Send feedback" button in Profile writes to. Leave EMPTY to hide the button. -->
+    <string name="feedback_email" translatable="false"></string>
 </resources>

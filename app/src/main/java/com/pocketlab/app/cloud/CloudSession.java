@@ -5,8 +5,9 @@ import com.pocketlab.app.graph.Marker;
 import java.util.List;
 
 /**
- * What is backed up for one recording: a summary, not the raw samples (Firestore documents are
- * small and billed per read/write). Pure data; see {@link CloudMapper} for the stored form.
+ * The cloud copy of one recording. The summary (this class) lives in Cloud Firestore; the raw
+ * samples, if any, live in the Realtime Database in {@link #sampleChunks} pieces. Pure data; see
+ * {@link CloudMapper} for the stored form.
  */
 public final class CloudSession {
 
@@ -38,10 +39,12 @@ public final class CloudSession {
     public final List<Stat> stats;
     /** Last change time (ms). Used to decide which side is newer. */
     public final long modifiedAt;
+    /** How many pieces of raw samples are stored in the Realtime Database (0 = none uploaded). */
+    public final int sampleChunks;
 
     public CloudSession(String name, long createdAtMillis, String sensor, String samplingRate, String kind,
                         String experimentId, String experimentTitle, double durationSeconds, long sampleCount,
-                        String resultText, List<Marker> markers, List<Stat> stats, long modifiedAt) {
+                        String resultText, List<Marker> markers, List<Stat> stats, long modifiedAt, int sampleChunks) {
         this.name = name;
         this.createdAtMillis = createdAtMillis;
         this.sensor = sensor;
@@ -55,5 +58,19 @@ public final class CloudSession {
         this.markers = markers;
         this.stats = stats;
         this.modifiedAt = modifiedAt;
+        this.sampleChunks = sampleChunks;
+    }
+
+    /** A summary without uploaded raw samples. */
+    public CloudSession(String name, long createdAtMillis, String sensor, String samplingRate, String kind,
+                        String experimentId, String experimentTitle, double durationSeconds, long sampleCount,
+                        String resultText, List<Marker> markers, List<Stat> stats, long modifiedAt) {
+        this(name, createdAtMillis, sensor, samplingRate, kind, experimentId, experimentTitle, durationSeconds,
+                sampleCount, resultText, markers, stats, modifiedAt, 0);
+    }
+
+    public CloudSession withSampleChunks(int chunks) {
+        return new CloudSession(name, createdAtMillis, sensor, samplingRate, kind, experimentId, experimentTitle,
+                durationSeconds, sampleCount, resultText, markers, stats, modifiedAt, chunks);
     }
 }

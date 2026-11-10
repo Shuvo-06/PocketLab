@@ -1,6 +1,6 @@
 # Database (Room / SQLite)
 
-File `pocketlab.db`, **version 2**. Foreign keys are enforced by Room. All access is off the main thread.
+File `pocketlab.db`, **version 3**. Foreign keys are enforced by Room. All access is off the main thread.
 
 ## Tables
 
@@ -23,6 +23,7 @@ File `pocketlab.db`, **version 2**. Foreign keys are enforced by Room. All acces
 | `modifiedAt` | INTEGER NOT NULL DEFAULT 0 | stamped by SQL on finish, rename, recover |
 | `cloudId` | TEXT | Firestore document id; null = never backed up |
 | `syncedAt` | INTEGER NOT NULL DEFAULT 0 | `modifiedAt` value last exchanged with the cloud |
+| `ownerUid` | TEXT NOT NULL DEFAULT '' | Firebase uid of the owning account; '' = recorded without an account |
 
 ### `samples`: raw measurements (can be hundreds of thousands per session)
 
@@ -63,12 +64,20 @@ ALTER TABLE sessions ADD COLUMN syncedAt INTEGER NOT NULL DEFAULT 0;
 UPDATE sessions SET modifiedAt = createdAt;   -- existing recordings count as "changed": first sync uploads them
 ```
 
+## Migration 2 → 3 (accounts)
+
+```sql
+ALTER TABLE sessions ADD COLUMN ownerUid TEXT NOT NULL DEFAULT '';
+```
+Existing recordings become "no account" recordings; the first account that signs in on the device claims them
+(`claimGuestSessions`, which also resets their backup state so they upload to that account).
+
 ## Notable queries
 
 | Query | Purpose |
 |---|---|
-| `search(:query)` | finished, not trashed, name LIKE with ESCAPE so `%` and `_` are literal; newest first |
+| `search(:owner, :query)` | the account's finished, not trashed sessions, name LIKE with ESCAPE so `%` and `_` are literal; newest first |
 | `decimated(:id, :step)` | every n-th sample (detail screens cap at 100,000 samples) |
 | `page(:id, :afterId, :limit)` | keyset pagination used by exports and the ContentProvider |
-| `syncable()`, `countUnsynced()` | cloud sync |
+| `syncable(:owner)`, `countUnsynced(:owner)`, `claimGuestSessions(:uid)` | cloud sync and accounts |
 | `incomplete()` + `recover(...)` | crash recovery |

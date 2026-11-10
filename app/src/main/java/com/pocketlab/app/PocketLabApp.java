@@ -2,6 +2,8 @@ package com.pocketlab.app;
 
 import android.app.Application;
 
+import com.pocketlab.app.cloud.AuthManager;
+import com.pocketlab.app.cloud.ConnectivityMonitor;
 import com.pocketlab.app.data.AppDatabase;
 import com.pocketlab.app.data.SessionRepository;
 import com.pocketlab.app.export.TransferManager;
@@ -18,17 +20,23 @@ public class PocketLabApp extends Application {
     private SessionRepository sessionRepository;
     private TransferManager transferManager;
     private RecordingController recordingController;
+    private ConnectivityMonitor connectivityMonitor;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        connectivityMonitor = new ConnectivityMonitor(this);
         sensorHub = new SensorHub(this);
         sessionRepository = new SessionRepository(AppDatabase.get(this),
-                Executors.newSingleThreadExecutor());
+                Executors.newSingleThreadExecutor(), () -> AuthManager.uid(this));
         sessionRepository.recoverAndPurge();
         recordingController = new RecordingController(this, sensorHub, sessionRepository);
         SyncScheduler.scheduleExperimentUpdates(this);   // daily check for new experiments (no-op without a server)
         transferManager = new TransferManager(this, AppDatabase.get(this));
+    }
+
+    public ConnectivityMonitor getConnectivityMonitor() {
+        return connectivityMonitor;
     }
 
     public SensorHub getSensorHub() {

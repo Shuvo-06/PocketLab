@@ -56,9 +56,9 @@ public class AppDatabaseTest {
     @Test
     public void unfinishedSessionsAreHiddenUntilFinished() {
         long id = newSession("Run A");
-        assertEquals(0, db.sessionDao().search("").size());
+        assertEquals(0, db.sessionDao().search("", "").size());
         store.finishSession(id, 1.0, 50, "ok", Collections.singletonList(new Marker(0.5, "M1")));
-        List<SessionEntity> all = db.sessionDao().search("");
+        List<SessionEntity> all = db.sessionDao().search("", "");
         assertEquals(1, all.size());
         assertEquals("ok", all.get(0).resultText);
         assertEquals(1, db.markerDao().forSession(id).size());
@@ -94,9 +94,9 @@ public class AppDatabaseTest {
         store.finishSession(a, 1, 0, null, Collections.emptyList());
         store.finishSession(b, 1, 0, null, Collections.emptyList());
         db.sessionDao().setTrashed(a, true);
-        assertEquals(1, db.sessionDao().search("").size());
+        assertEquals(1, db.sessionDao().search("", "").size());
         db.sessionDao().setTrashed(a, false);
-        assertEquals(2, db.sessionDao().search("").size());
+        assertEquals(2, db.sessionDao().search("", "").size());
         db.sessionDao().setTrashed(a, true);
         newSession("never finished");
         assertEquals(2, db.sessionDao().purge());   // the trashed one and the unfinished one
@@ -110,9 +110,9 @@ public class AppDatabaseTest {
         long b = newSession("Pendulum other");
         store.finishSession(a, 1, 0, null, Collections.emptyList());
         store.finishSession(b, 1, 0, null, Collections.emptyList());
-        assertEquals(2, db.sessionDao().search(SessionText.escapeLike("pendulum")).size());
-        assertEquals(1, db.sessionDao().search(SessionText.escapeLike("100%")).size());
-        assertEquals(1, db.sessionDao().search(SessionText.escapeLike("%")).size()); // only the name containing a literal %
+        assertEquals(2, db.sessionDao().search("", SessionText.escapeLike("pendulum")).size());
+        assertEquals(1, db.sessionDao().search("", SessionText.escapeLike("100%")).size());
+        assertEquals(1, db.sessionDao().search("", SessionText.escapeLike("%")).size()); // only the name containing a literal %
     }
 
     @Test
@@ -122,7 +122,7 @@ public class AppDatabaseTest {
         rec.begin();
         for (int i = 0; i < 1200; i++) rec.onSample(i * 0.1, new float[]{i});
         rec.discard();
-        assertEquals(0, db.sessionDao().search("").size());
+        assertEquals(0, db.sessionDao().search("", "").size());
         assertNull(rec.getError());
     }
 }

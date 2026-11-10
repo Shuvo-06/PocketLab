@@ -23,6 +23,7 @@ public final class SyncScheduler {
 
     private static final String WORK_NOW = "pocketlab-sync-now";
     private static final String WORK_AFTER_SAVE = "pocketlab-sync-after-save";
+    private static final String WORK_PENDING = "pocketlab-sync-pending";
     private static final String WORK_PERIODIC = "pocketlab-sync-periodic";
     private static final String WORK_EXPERIMENTS = "pocketlab-experiment-updates";
 
@@ -42,6 +43,21 @@ public final class SyncScheduler {
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build();
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NOW, ExistingWorkPolicy.REPLACE, request);
+    }
+
+    /**
+     * The phone just came back online: upload everything that was queued while offline. KEEP, so a
+     * flickering connection never cancels a run that is already in progress.
+     */
+    public static void syncPending(Context context) {
+        SyncPrefs prefs = new SyncPrefs(context);
+        if (!prefs.isAutoSync() || AuthManager.user(context) == null) return;
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(SyncWorker.class)
+                .setConstraints(network(prefs.isWifiOnly()))
+                .setInputData(new Data.Builder().putString(SyncWorker.KEY_MODE, SyncMode.SYNC.name()).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .build();
+        WorkManager.getInstance(context).enqueueUniqueWork(WORK_PENDING, ExistingWorkPolicy.KEEP, request);
     }
 
     /** Turns the 6-hourly automatic sync on or off (and applies the Wi-Fi-only choice). */
